@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3b0b6e43c025c44c8a8cc2387ba8776, type: 3}
   m_Name: AgentConfig
   m_EditorClassIdentifier: Assembly-CSharp::FiveGLab.VoiceAgent.AgentConfig
-  useMockServices: 0
+  useMockServices: 1
   proxyBaseUrl: http://localhost:3000
   proxyAuthToken: 
   sttEndpoint: /stt

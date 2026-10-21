@@ -80,10 +80,10 @@ namespace FiveGLab.VoiceAgent
 
             if (config.useMockServices)
             {
-                if (config.debugLogging) Debug.Log("[VoiceAgentManager] Running with MOCK providers (offline / zero-cost).");
-                sttService = new MockSpeechToText();
-                llmService = new MockLanguageModel(knowledgeBase);
-                ttsService = new MockTextToSpeech();
+                if (config.debugLogging) Debug.Log("[VoiceAgentManager] Running with Free Direct In-Engine AI (Pollinations LLM + Google Neural Voice - No proxy needed!).");
+                sttService = new DirectFreeSpeechToText(config.proxyAuthToken);
+                llmService = new DirectFreeLanguageModel(knowledgeBase);
+                ttsService = new DirectFreeTextToSpeech();
             }
             else
             {
@@ -276,6 +276,10 @@ namespace FiveGLab.VoiceAgent
                     if (clip != null && speaker != null)
                     {
                         speaker.EnqueueSpeech(clip, sentence.Trim());
+                    }
+                    else if (hud != null)
+                    {
+                        hud.ShowSubtitle(sentence.Trim());
                     }
                 }
                 catch (Exception ex)

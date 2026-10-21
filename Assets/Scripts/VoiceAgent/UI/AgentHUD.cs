@@ -45,13 +45,13 @@ namespace FiveGLab.VoiceAgent
             switch (state)
             {
                 case AgentState.Idle:
-                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#888888>| Hold [V] or Controller Grip to speak</color>";
+                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#CCCCCC>| Hold [V] to Talk | [1] Tour | [2] Spectrum | [3] MEC | [4] gNodeB | [T] Ask</color>";
                     if (micIconImage != null) micIconImage.color = new Color(0.6f, 0.6f, 0.6f, 0.7f);
                     if (levelMeterBar != null) levelMeterBar.fillAmount = 0f;
                     break;
 
                 case AgentState.Listening:
-                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#4CAF50>| Listening...</color>";
+                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#4CAF50>| Listening to your voice...</color>";
                     if (micIconImage != null) micIconImage.color = new Color(0.3f, 0.9f, 0.4f, 1f);
                     break;
 
@@ -62,17 +62,17 @@ namespace FiveGLab.VoiceAgent
                     break;
 
                 case AgentState.Thinking:
-                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#8AB4F8>| Thinking...</color>";
+                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#8AB4F8>| Consulting 5G knowledge base...</color>";
                     if (micIconImage != null) micIconImage.color = new Color(0.54f, 0.71f, 0.97f, 1f);
                     break;
 
                 case AgentState.Speaking:
-                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#FFFFFF>| Speaking</color>";
+                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#FFFFFF>| Speaking (Google Neural Voice)</color>";
                     if (micIconImage != null) micIconImage.color = new Color(0.54f, 0.71f, 0.97f, 1f);
                     break;
 
                 case AgentState.Touring:
-                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#E0E0E0>| 5G Guided Tour Active</color>";
+                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#8AB4F8>| 5G Interactive Guided Tour</color>";
                     if (micIconImage != null) micIconImage.color = new Color(0.54f, 0.71f, 0.97f, 1f);
                     break;
             }
@@ -84,7 +84,7 @@ namespace FiveGLab.VoiceAgent
 
             subtitleText.text = text;
             if (subtitleFadeRoutine != null) StopCoroutine(subtitleFadeRoutine);
-            subtitleFadeRoutine = StartCoroutine(ClearSubtitleAfterDelay(6f));
+            subtitleFadeRoutine = StartCoroutine(ClearSubtitleAfterDelay(8f));
         }
 
         private IEnumerator ClearSubtitleAfterDelay(float delay)
@@ -137,14 +137,14 @@ namespace FiveGLab.VoiceAgent
                 hudRoot = new GameObject("HUD_Root");
                 hudRoot.transform.SetParent(canvas.transform, false);
                 var rect = hudRoot.AddComponent<RectTransform>();
-                rect.sizeDelta = new Vector2(500, 110);
-                rect.localScale = Vector3.one * 0.0016f; // Perfect comfortable size in VR
+                rect.sizeDelta = new Vector2(620, 120);
+                rect.localScale = Vector3.one * 0.0016f;
 
                 // Background Panel (#1A1A1A at 85% opacity)
                 var bgGO = new GameObject("Background");
                 bgGO.transform.SetParent(hudRoot.transform, false);
                 backgroundImage = bgGO.AddComponent<Image>();
-                backgroundImage.color = new Color(0.1f, 0.1f, 0.1f, 0.85f);
+                backgroundImage.color = new Color(0.1f, 0.1f, 0.1f, 0.88f);
                 var bgRect = bgGO.GetComponent<RectTransform>();
                 bgRect.anchorMin = Vector2.zero;
                 bgRect.anchorMax = Vector2.one;
@@ -169,7 +169,7 @@ namespace FiveGLab.VoiceAgent
                 var statusGO = new GameObject("StatusText");
                 statusGO.transform.SetParent(hudRoot.transform, false);
                 statusText = statusGO.AddComponent<TextMeshProUGUI>();
-                statusText.fontSize = 17;
+                statusText.fontSize = 15;
                 statusText.alignment = TextAlignmentOptions.MidlineLeft;
                 statusText.text = "ARIA";
                 var statusRect = statusGO.GetComponent<RectTransform>();
@@ -183,7 +183,7 @@ namespace FiveGLab.VoiceAgent
                 subGO.transform.SetParent(hudRoot.transform, false);
                 subtitleText = subGO.AddComponent<TextMeshProUGUI>();
                 subtitleText.fontSize = 15;
-                subtitleText.color = new Color(0.88f, 0.88f, 0.88f, 1f); // Off-white #E0E0E0
+                subtitleText.color = new Color(0.92f, 0.92f, 0.92f, 1f); // Off-white #E0E0E0
                 subtitleText.enableWordWrapping = true;
                 subtitleText.alignment = TextAlignmentOptions.TopLeft;
                 subtitleText.text = "";
