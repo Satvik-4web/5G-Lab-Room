@@ -25,6 +25,7 @@ public class PCInteractionTester : MonoBehaviour
     public float distanceInFront = 0.65f;
 
     public EquipmentId AssociatedEquipmentId { get; private set; } = EquipmentId.None;
+    public AudioSource EquipmentAudioSource => audioSource;
 
     void Awake()
     {
@@ -97,7 +98,7 @@ public class PCInteractionTester : MonoBehaviour
         TriggerInteraction();
     }
 
-    public static void InspectEquipment(EquipmentId id)
+    public static void InspectEquipment(EquipmentId id, bool playEquipmentAudio = true)
     {
         if (Instances.TryGetValue(id, out var tester))
         {
@@ -108,7 +109,7 @@ public class PCInteractionTester : MonoBehaviour
 
             if (!tester.isZoomed)
             {
-                tester.TriggerInteraction();
+                tester.TriggerInteraction(playEquipmentAudio);
             }
         }
     }
@@ -121,17 +122,22 @@ public class PCInteractionTester : MonoBehaviour
         }
     }
 
-    public void EnterInspection()
+    public void EnterInspection(bool playAudio = true)
     {
-        if (!isZoomed) TriggerInteraction();
+        if (!isZoomed) TriggerInteraction(playAudio);
     }
 
     public void ExitInspection()
     {
-        if (isZoomed) TriggerInteraction();
+        if (isZoomed) TriggerInteraction(false);
     }
 
     public void TriggerInteraction()
+    {
+        TriggerInteraction(true);
+    }
+
+    public void TriggerInteraction(bool allowAudio)
     {
         if (xrOrigin != null && Camera.main != null)
         {
@@ -143,7 +149,16 @@ public class PCInteractionTester : MonoBehaviour
                     skipWav = VoiceAgentManager.Instance.Config.useAgentNarrationInsteadOfWav;
                 }
 
-                if (!skipWav && audioSource != null && !audioSource.isPlaying)
+                // Check if Aria is currently speaking or in Guided Tour mode
+                bool ariaSpeaking = false;
+                if (VoiceAgentManager.Instance != null)
+                {
+                    ariaSpeaking = (VoiceAgentManager.Instance.CurrentState == AgentState.Speaking ||
+                                    VoiceAgentManager.Instance.CurrentState == AgentState.Touring);
+                }
+
+                // Play equipment pre-recorded audio ONLY if Aria is not speaking and audio is allowed
+                if (allowAudio && !skipWav && !ariaSpeaking && audioSource != null && !audioSource.isPlaying)
                 {
                     audioSource.Play();
                 }
@@ -163,20 +178,15 @@ public class PCInteractionTester : MonoBehaviour
                 // Calculate zoom straight in from the camera's current viewing angle
                 Vector3 objCenter = transform.position;
                 BoxCollider col = GetComponent<BoxCollider>();
-                if (col != null) objCenter = transform.TransformPoint(col.center); // Use true center of object
+                if (col != null) objCenter = transform.TransformPoint(col.center);
                 
                 Vector3 dirToCamera = (Camera.main.transform.position - objCenter).normalized;
-                
-                // Stop distanceInFront meters away from the center
                 Vector3 desiredCameraPos = objCenter + (dirToCamera * distanceInFront);
-                
-                // Keep the camera's original height relative to the object center to avoid looking up/down weirdly
                 desiredCameraPos.y = objCenter.y + 0.15f; 
 
                 Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
                 Vector3 targetOriginPos = desiredCameraPos - cameraLocalOffset;
                 
-                // Look directly at the object center
                 Vector3 lookDirection = objCenter - desiredCameraPos;
                 Quaternion desiredCameraRot = Quaternion.LookRotation(lookDirection);
                 Quaternion targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);

@@ -36,6 +36,7 @@ namespace FiveGLab.VoiceAgent
         public AgentState CurrentState => currentState;
         public ConversationMemory Memory => memory;
         public AgentHUD HUD => hud;
+        public AgentSpeaker Speaker => speaker;
 
         public event Action<AgentState> OnStateChanged;
 
@@ -154,6 +155,7 @@ namespace FiveGLab.VoiceAgent
                 }
                 else
                 {
+                    if (hud != null) hud.ShowSubtitle("Hold [V] while speaking into your microphone.");
                     SetState(AgentState.Idle);
                 }
             }
@@ -196,7 +198,7 @@ namespace FiveGLab.VoiceAgent
             catch (Exception ex)
             {
                 Debug.LogError($"[VoiceAgentManager] Error processing voice turn: {ex}");
-                if (hud != null) hud.ShowSubtitle("I had trouble reaching the network. Please try again.");
+                if (hud != null) hud.ShowSubtitle("I had trouble processing that. Please try again.");
                 SetState(AgentState.Idle);
             }
         }
@@ -246,7 +248,7 @@ namespace FiveGLab.VoiceAgent
                 }
             }
 
-            // 4. Synthesize spoken response
+            // 4. Synthesize spoken response (ONLY if speechText is not empty)
             string speechText = CleanSpokenText(llmResponse.textContent);
             if (!string.IsNullOrEmpty(speechText))
             {

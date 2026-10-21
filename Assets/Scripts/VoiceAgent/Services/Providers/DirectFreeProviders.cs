@@ -49,11 +49,13 @@ namespace FiveGLab.VoiceAgent
                 response.toolCalls.Add(new ToolCallRequest { id = "call_tour", toolName = "start_tour", argumentsJson = "{\"mode\":\"full\"}" });
                 return response;
             }
+
+            // For equipment zoom: Leave textContent empty so the equipment's own pre-recorded voice plays without clashing!
             if (lowerQuery.Contains("spectrum") || lowerQuery.Contains("analyzer"))
             {
                 if (lowerQuery.Contains("zoom") || lowerQuery.Contains("take me") || lowerQuery.Contains("inspect") || lowerQuery.Contains("go to"))
                 {
-                    response.textContent = "Bringing you right in front of the RF Spectrum Analyzer test bench.";
+                    response.textContent = ""; 
                     response.toolCalls.Add(new ToolCallRequest { id = "call_spec", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"spectrum\"}" });
                     return response;
                 }
@@ -62,7 +64,7 @@ namespace FiveGLab.VoiceAgent
             {
                 if (lowerQuery.Contains("zoom") || lowerQuery.Contains("take me") || lowerQuery.Contains("inspect") || lowerQuery.Contains("go to"))
                 {
-                    response.textContent = "Moving over to the Mobile Edge Computing core server rack.";
+                    response.textContent = ""; 
                     response.toolCalls.Add(new ToolCallRequest { id = "call_mec", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"mec\"}" });
                     return response;
                 }
@@ -71,14 +73,14 @@ namespace FiveGLab.VoiceAgent
             {
                 if (lowerQuery.Contains("zoom") || lowerQuery.Contains("take me") || lowerQuery.Contains("inspect") || lowerQuery.Contains("go to"))
                 {
-                    response.textContent = "Let's zoom into the gNodeB Massive MIMO base station antenna.";
+                    response.textContent = ""; 
                     response.toolCalls.Add(new ToolCallRequest { id = "call_ant", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"gnodeb\"}" });
                     return response;
                 }
             }
             if (lowerQuery.Contains("exit") || lowerQuery.Contains("zoom out") || lowerQuery.Contains("step back"))
             {
-                response.textContent = "Stepping back out to the general lab view.";
+                response.textContent = "";
                 response.toolCalls.Add(new ToolCallRequest { id = "call_exit", toolName = "exit_inspection", argumentsJson = "{}" });
                 return response;
             }
@@ -86,11 +88,11 @@ namespace FiveGLab.VoiceAgent
             // 2. Call Free Public Pollinations AI (OpenAI-level intelligence, 100% Free, No key)
             try
             {
-                string combinedPrompt = $"You are Aria, an interactive voice tutor in a 5G Virtual Reality Lab. Answer in 2-3 short, spoken sentences without markdown or bullet points. Speak naturally.\n\nContext:\n{systemPrompt}\n\nLearner: {userQuery}\nAria:";
+                string combinedPrompt = $"You are Aria, an interactive voice tutor in a 5G Virtual Reality Lab. Answer in 2 short, spoken sentences without markdown or bullet points. Speak naturally.\n\nContext:\n{systemPrompt}\n\nLearner: {userQuery}\nAria:";
                 
                 string url = $"https://text.pollinations.ai/{UnityWebRequest.EscapeURL(combinedPrompt)}";
                 using var req = UnityWebRequest.Get(url);
-                req.timeout = 8;
+                req.timeout = 7;
 
                 var op = req.SendWebRequest();
                 while (!op.isDone)
@@ -102,7 +104,6 @@ namespace FiveGLab.VoiceAgent
                 if (req.result == UnityWebRequest.Result.Success && !string.IsNullOrWhiteSpace(req.downloadHandler.text))
                 {
                     string answer = req.downloadHandler.text.Trim();
-                    // Clean up any AI prefix if returned
                     if (answer.StartsWith("Aria:", StringComparison.OrdinalIgnoreCase)) answer = answer.Substring(5).Trim();
                     response.textContent = answer;
                     onTokenChunk?.Invoke(answer);
@@ -114,7 +115,7 @@ namespace FiveGLab.VoiceAgent
                 Debug.LogWarning($"[DirectFreeLanguageModel] Public AI fallback triggered: {ex.Message}");
             }
 
-            // 3. Fallback to Local Knowledge Base if offline
+            // 3. Fallback to Local Knowledge Base
             if (knowledge != null)
             {
                 if (lowerQuery.Contains("beamform"))
@@ -132,7 +133,7 @@ namespace FiveGLab.VoiceAgent
                 else if (LabContext.CurrentInspected != EquipmentId.None)
                 {
                     var data = knowledge.GetEquipment(LabContext.CurrentInspected);
-                    response.textContent = $"You are currently inspecting the {data?.displayName}. {data?.oneLiner} Would you like to know more about its technical specifications?";
+                    response.textContent = $"You are currently inspecting the {data?.displayName}. {data?.oneLiner}";
                 }
                 else
                 {
@@ -154,7 +155,9 @@ namespace FiveGLab.VoiceAgent
         {
             if (string.IsNullOrWhiteSpace(text)) return null;
 
-            // Clean text and limit chunk to 180 chars for Google TTS
+            // Stop any equipment audio so voices never clash!
+            AgentSpeaker.DuckOtherAudioSources();
+
             string clean = Regex.Replace(text, @"[\*#`_>\[\]\n\r]", " ").Trim();
             if (clean.Length > 180) clean = clean.Substring(0, 180);
 
@@ -176,13 +179,12 @@ namespace FiveGLab.VoiceAgent
                 return DownloadHandlerAudioClip.GetContent(req);
             }
 
-            Debug.LogWarning($"[DirectFreeTextToSpeech] Synthesis failed ({req.error}), using fallback tone.");
             return null;
         }
     }
 
     /// <summary>
-    /// Direct Free STT supporting Groq Whisper (free key) or context/Windows dictation fallback.
+    /// Direct Free STT supporting Groq Whisper or intelligent context fallback.
     /// </summary>
     public class DirectFreeSpeechToText : ISpeechToText
     {
@@ -197,7 +199,7 @@ namespace FiveGLab.VoiceAgent
         {
             if (wavAudio == null || wavAudio.Length == 0) return string.Empty;
 
-            // 1. If Groq API Key is provided, use ultra-fast free Whisper
+            // 1. If Groq API Key is configured, use Groq Whisper
             if (!string.IsNullOrEmpty(groqKey))
             {
                 try
@@ -236,8 +238,8 @@ namespace FiveGLab.VoiceAgent
                 }
             }
 
-            // 2. Intelligent Context-Aware Fallback (when speaking into mic without Groq key)
-            await Task.Delay(250, ct);
+            // 2. Intelligent Context-Aware Fallback
+            await Task.Delay(200, ct);
 
             if (LabContext.CurrentInspected != EquipmentId.None)
             {
@@ -248,7 +250,7 @@ namespace FiveGLab.VoiceAgent
                 return $"What is this {LabContext.CurrentHovered.GetDisplayName()}?";
             }
 
-            return "Explain what this 5G lab does and start the tour.";
+            return "What does this 5G lab do?";
         }
     }
 }
