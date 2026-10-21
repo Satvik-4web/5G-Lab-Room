@@ -33,22 +33,45 @@ namespace FiveGLab.VoiceAgent
 
             KeyCode pttKey = manager.Config != null ? manager.Config.pttKey : KeyCode.V;
 
-            // 1. Keyboard PTT (Desktop)
-            if (Input.GetKeyDown(pttKey))
+            bool pttDown = false;
+            bool pttUp = false;
+
+            // 1. New Input System Support (Primary for Unity 6 / URP)
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.vKey.wasPressedThisFrame) pttDown = true;
+                if (Keyboard.current.vKey.wasReleasedThisFrame) pttUp = true;
+            }
+
+            // 2. Legacy Input Fallback (if New Input System keyboard is null)
+            if (!pttDown && !pttUp)
+            {
+                try
+                {
+                    if (Input.GetKeyDown(pttKey)) pttDown = true;
+                    if (Input.GetKeyUp(pttKey)) pttUp = true;
+                }
+                catch { }
+            }
+
+            if (pttDown)
             {
                 OnPttDown();
             }
-            else if (Input.GetKeyUp(pttKey))
+            else if (pttUp)
             {
                 OnPttUp();
             }
 
-            // 2. VAD Handling (if enabled in config)
+            // 3. VAD Handling (if enabled in config)
             if (manager.Config != null && manager.Config.vadEnabled)
             {
                 HandleVoiceActivityDetection();
             }
         }
+
+        public void TriggerPttDown() => OnPttDown();
+        public void TriggerPttUp() => OnPttUp();
 
         private void OnPttDown()
         {
