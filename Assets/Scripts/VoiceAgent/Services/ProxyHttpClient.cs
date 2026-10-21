@@ -99,7 +99,8 @@ namespace FiveGLab.VoiceAgent
 
             using var req = new UnityWebRequest(url, "POST");
             req.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            req.downloadHandler = new DownloadHandlerAudioClip(url, AudioType.WAV);
+            // AudioType.UNKNOWN enables automatic decoding for both WAV and MP3!
+            req.downloadHandler = new DownloadHandlerAudioClip(url, AudioType.UNKNOWN);
             req.SetRequestHeader("Content-Type", "application/json");
 
             if (!string.IsNullOrEmpty(authToken))
