@@ -28,6 +28,7 @@ public class QuestBuilder
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel29;
         PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)32;
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+        PlayerSettings.Android.forceInternetPermission = true;
         EditorUserBuildSettings.androidBuildSubtarget = MobileTextureSubtarget.ASTC;
         PlayerSettings.companyName = "5G Lab";
         PlayerSettings.productName = "5G Lab VR";
@@ -35,7 +36,7 @@ public class QuestBuilder
         // Ensure scene is saved
         UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
         
-        string[] scenes = { "Assets/Scenes/ComputerLab.unity" }; // Ensure this matches their scene path
+        string[] scenes = { "Assets/Scenes/ComputerLab.unity" };
 
         BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions
         {

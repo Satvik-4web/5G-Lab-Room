@@ -1,11 +1,16 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using FiveGLab.VoiceAgent;
 
 [RequireComponent(typeof(Collider))]
 public class PCInteractionTester : MonoBehaviour
 {
+    private static readonly Dictionary<EquipmentId, PCInteractionTester> Instances = new Dictionary<EquipmentId, PCInteractionTester>();
+    private static PCInteractionTester currentZoomedInstance = null;
+
     private InteractableLabel interactableLabel;
     private AudioSource audioSource;
     private XRSimpleInteractable xrInteractable;
@@ -18,6 +23,25 @@ public class PCInteractionTester : MonoBehaviour
     
     [SerializeField]
     public float distanceInFront = 0.65f;
+
+    public EquipmentId AssociatedEquipmentId { get; private set; } = EquipmentId.None;
+
+    void Awake()
+    {
+        AssociatedEquipmentId = LabContext.ResolveEquipment(gameObject);
+        if (AssociatedEquipmentId != EquipmentId.None)
+        {
+            Instances[AssociatedEquipmentId] = this;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (AssociatedEquipmentId != EquipmentId.None && Instances.ContainsKey(AssociatedEquipmentId))
+        {
+            Instances.Remove(AssociatedEquipmentId);
+        }
+    }
 
     void Start()
     {
@@ -73,19 +97,65 @@ public class PCInteractionTester : MonoBehaviour
         TriggerInteraction();
     }
 
-    void TriggerInteraction()
+    public static void InspectEquipment(EquipmentId id)
+    {
+        if (Instances.TryGetValue(id, out var tester))
+        {
+            if (currentZoomedInstance != null && currentZoomedInstance != tester)
+            {
+                currentZoomedInstance.ExitInspection();
+            }
+
+            if (!tester.isZoomed)
+            {
+                tester.TriggerInteraction();
+            }
+        }
+    }
+
+    public static void ExitCurrentInspection()
+    {
+        if (currentZoomedInstance != null && currentZoomedInstance.isZoomed)
+        {
+            currentZoomedInstance.ExitInspection();
+        }
+    }
+
+    public void EnterInspection()
+    {
+        if (!isZoomed) TriggerInteraction();
+    }
+
+    public void ExitInspection()
+    {
+        if (isZoomed) TriggerInteraction();
+    }
+
+    public void TriggerInteraction()
     {
         if (xrOrigin != null && Camera.main != null)
         {
             if (!isZoomed)
             {
-                if (audioSource != null && !audioSource.isPlaying) audioSource.Play();
+                bool skipWav = false;
+                if (VoiceAgentManager.Instance != null && VoiceAgentManager.Instance.Config != null)
+                {
+                    skipWav = VoiceAgentManager.Instance.Config.useAgentNarrationInsteadOfWav;
+                }
+
+                if (!skipWav && audioSource != null && !audioSource.isPlaying)
+                {
+                    audioSource.Play();
+                }
 
                 if (interactableLabel != null && PopupUIManager.Instance != null)
                 {
                     PopupUIManager.Instance.ShowPopup(interactableLabel.objectName, interactableLabel.objectDescription, transform);
                     PopupUIManager.Instance.SetInspectionMode(true); 
                 }
+
+                currentZoomedInstance = this;
+                LabContext.SetInspected(AssociatedEquipmentId);
 
                 originalOriginPos = xrOrigin.position;
                 originalOriginRot = xrOrigin.rotation;
@@ -124,6 +194,9 @@ public class PCInteractionTester : MonoBehaviour
                     PopupUIManager.Instance.SetInspectionMode(false);
                     PopupUIManager.Instance.HidePopup();
                 }
+
+                if (currentZoomedInstance == this) currentZoomedInstance = null;
+                LabContext.SetInspected(EquipmentId.None);
 
                 StopAllCoroutines();
                 StartCoroutine(LerpTransform(xrOrigin, originalOriginPos, originalOriginRot, 1.0f));

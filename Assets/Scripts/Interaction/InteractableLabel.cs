@@ -27,6 +27,7 @@ public class InteractableLabel : MonoBehaviour
 
     private void OnHoverEnter(HoverEnterEventArgs args)
     {
+        FiveGLab.VoiceAgent.LabContext.SetHovered(FiveGLab.VoiceAgent.LabContext.ResolveEquipment(gameObject));
         if (PopupUIManager.Instance != null)
         {
             PopupUIManager.Instance.ShowPopup(objectName, objectDescription, transform);
@@ -35,13 +36,7 @@ public class InteractableLabel : MonoBehaviour
 
     private void OnHoverExit(HoverExitEventArgs args)
     {
-        // Don't hide if we are currently inspecting
-        // We handle hiding in PCInteractionTester now for inspection mode, 
-        // but for normal hover, we should hide it.
-        // To be safe and decoupled, we check if the UI is in inspection mode.
-        // But since we can't easily check, we'll let PCInteractionTester handle hide when needed,
-        // or just let it hide if it's not being inspected.
-        // Actually, PCInteractionTester will hide it. Let's just call HidePopup here.
+        FiveGLab.VoiceAgent.LabContext.SetHovered(FiveGLab.VoiceAgent.EquipmentId.None);
         if (PopupUIManager.Instance != null)
         {
             PopupUIManager.Instance.HidePopup();

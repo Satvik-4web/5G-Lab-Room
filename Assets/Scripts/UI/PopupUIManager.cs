@@ -85,6 +85,18 @@ public class PopupUIManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Renders live Agent subtitles. If inspecting, attaches seamlessly; otherwise renders via AgentHUD.
+    /// </summary>
+    public void ShowAgentSubtitle(string text, bool final = false)
+    {
+        if (FiveGLab.VoiceAgent.VoiceAgentManager.Instance != null && 
+            FiveGLab.VoiceAgent.VoiceAgentManager.Instance.HUD != null)
+        {
+            FiveGLab.VoiceAgent.VoiceAgentManager.Instance.HUD.ShowSubtitle(text);
+        }
+    }
+
     private void LateUpdate()
     {
         if (isInspecting && popupPanel != null && popupPanel.activeSelf && Camera.main != null)

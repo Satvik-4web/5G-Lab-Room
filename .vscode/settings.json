@@ -67,6 +67,6 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "5G Lab Room New AG.slnx",
+    "dotnet.defaultSolution": "5G-Lab-Room.slnx",
     "dotnet.enableWorkspaceBasedDevelopment": false
 }
