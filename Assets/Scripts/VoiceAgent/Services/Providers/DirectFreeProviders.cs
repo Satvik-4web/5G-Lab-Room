@@ -65,35 +65,51 @@ namespace FiveGLab.VoiceAgent
                 return response;
             }
 
-            // Equipment Zoom Tools (leave text empty so equipment audio or camera zoom happens smoothly)
-            if (lowerQuery.Contains("spectrum") || lowerQuery.Contains("analyzer"))
+            // Intent to view, show, zoom, inspect, or navigate to equipment
+            bool isNavIntent = lowerQuery.Contains("show") || lowerQuery.Contains("see") || lowerQuery.Contains("view") ||
+                               lowerQuery.Contains("zoom") || lowerQuery.Contains("take") || lowerQuery.Contains("go to") ||
+                               lowerQuery.Contains("goto") || lowerQuery.Contains("inspect") || lowerQuery.Contains("look") ||
+                               lowerQuery.Contains("bring") || lowerQuery.Contains("lead") || lowerQuery.Contains("walk") ||
+                               lowerQuery.Contains("teleport") || lowerQuery.Contains("where is") || lowerQuery.Contains("dikhao") ||
+                               lowerQuery.Contains("le chalo") || lowerQuery.Contains("kahan hai");
+
+            bool isSpectrum = lowerQuery.Contains("spectrum") || lowerQuery.Contains("soectrum") ||
+                              lowerQuery.Contains("spectram") || lowerQuery.Contains("analyzer") ||
+                              lowerQuery.Contains("analyser");
+
+            bool isMec = lowerQuery.Contains("mec") || lowerQuery.Contains("server") ||
+                         lowerQuery.Contains("rack") || lowerQuery.Contains("bbu") ||
+                         lowerQuery.Contains("edge computing") || lowerQuery.Contains("black box");
+
+            bool isGnodeb = lowerQuery.Contains("gnodeb") || lowerQuery.Contains("antenna") ||
+                            lowerQuery.Contains("antena") || lowerQuery.Contains("base station") ||
+                            lowerQuery.Contains("cell tower") || lowerQuery.Contains("tower");
+
+            bool isExit = lowerQuery.Contains("exit") || lowerQuery.Contains("zoom out") ||
+                          lowerQuery.Contains("step back") || lowerQuery.Contains("stop inspect") ||
+                          lowerQuery.Contains("back to room") || lowerQuery.Contains("piche") ||
+                          lowerQuery.Contains("wapas");
+
+            // Execute Equipment Zoom & Inspection Tools
+            if (isSpectrum && isNavIntent)
             {
-                if (lowerQuery.Contains("zoom") || lowerQuery.Contains("take me") || lowerQuery.Contains("inspect") || lowerQuery.Contains("go to") || lowerQuery.Contains("look at"))
-                {
-                    response.textContent = ""; 
-                    response.toolCalls.Add(new ToolCallRequest { id = "call_spec", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"spectrum\"}" });
-                    return response;
-                }
+                response.textContent = ""; 
+                response.toolCalls.Add(new ToolCallRequest { id = "call_spec", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"spectrum\"}" });
+                return response;
             }
-            if (lowerQuery.Contains("mec") || lowerQuery.Contains("rack") || lowerQuery.Contains("server") || lowerQuery.Contains("edge"))
+            if (isMec && isNavIntent)
             {
-                if (lowerQuery.Contains("zoom") || lowerQuery.Contains("take me") || lowerQuery.Contains("inspect") || lowerQuery.Contains("go to") || lowerQuery.Contains("look at"))
-                {
-                    response.textContent = ""; 
-                    response.toolCalls.Add(new ToolCallRequest { id = "call_mec", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"mec\"}" });
-                    return response;
-                }
+                response.textContent = ""; 
+                response.toolCalls.Add(new ToolCallRequest { id = "call_mec", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"mec\"}" });
+                return response;
             }
-            if (lowerQuery.Contains("gnodeb") || lowerQuery.Contains("antenna") || lowerQuery.Contains("base station"))
+            if (isGnodeb && isNavIntent)
             {
-                if (lowerQuery.Contains("zoom") || lowerQuery.Contains("take me") || lowerQuery.Contains("inspect") || lowerQuery.Contains("go to") || lowerQuery.Contains("look at"))
-                {
-                    response.textContent = ""; 
-                    response.toolCalls.Add(new ToolCallRequest { id = "call_ant", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"gnodeb\"}" });
-                    return response;
-                }
+                response.textContent = ""; 
+                response.toolCalls.Add(new ToolCallRequest { id = "call_ant", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"gnodeb\"}" });
+                return response;
             }
-            if (lowerQuery.Contains("exit") || lowerQuery.Contains("zoom out") || lowerQuery.Contains("step back") || lowerQuery.Contains("stop inspect"))
+            if (isExit)
             {
                 response.textContent = "";
                 response.toolCalls.Add(new ToolCallRequest { id = "call_exit", toolName = "exit_inspection", argumentsJson = "{}" });
