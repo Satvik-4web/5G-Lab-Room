@@ -8,6 +8,19 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
+[Serializable]
+public class PollinationsMessage
+{
+    public string role;
+    public string content;
+}
+
+[Serializable]
+public class PollinationsPayload
+{
+    public List<PollinationsMessage> messages;
+}
+
 namespace FiveGLab.VoiceAgent
 {
     /// <summary>
@@ -86,14 +99,27 @@ namespace FiveGLab.VoiceAgent
                 return response;
             }
 
-            // 2. Call Free Public Pollinations AI (OpenAI-level intelligence, 100% Free, No key)
+            // 2. Call Free Public Pollinations AI via JSON POST (100% Free, Zero Key)
             try
             {
-                string combinedPrompt = $"You are Aria, an interactive voice tutor in a 5G Virtual Reality Lab. Answer in 2 short, spoken sentences without markdown or bullet points. Speak naturally.\n\nContext:\n{systemPrompt}\n\nLearner: {userQuery}\nAria:";
-                
-                string url = $"https://text.pollinations.ai/{UnityWebRequest.EscapeURL(combinedPrompt)}";
-                using var req = UnityWebRequest.Get(url);
-                req.timeout = 7;
+                string prompt = $"You are Aria, an interactive voice tutor in a 5G Virtual Reality Lab. Answer in 2 short, spoken sentences without markdown, asterisks, or bullet points. Speak naturally.\nLearner asked: {userQuery}";
+                var payloadObj = new PollinationsPayload
+                {
+                    messages = new List<PollinationsMessage>
+                    {
+                        new PollinationsMessage { role = "user", content = prompt }
+                    }
+                };
+
+                string jsonBody = JsonUtility.ToJson(payloadObj);
+                byte[] bodyBytes = Encoding.UTF8.GetBytes(jsonBody);
+
+                using var req = new UnityWebRequest("https://text.pollinations.ai/", "POST");
+                req.uploadHandler = new UploadHandlerRaw(bodyBytes);
+                req.downloadHandler = new DownloadHandlerBuffer();
+                req.SetRequestHeader("Content-Type", "application/json");
+                req.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                req.timeout = 10;
 
                 var op = req.SendWebRequest();
                 while (!op.isDone)
@@ -106,9 +132,13 @@ namespace FiveGLab.VoiceAgent
                 {
                     string answer = req.downloadHandler.text.Trim();
                     if (answer.StartsWith("Aria:", StringComparison.OrdinalIgnoreCase)) answer = answer.Substring(5).Trim();
-                    response.textContent = answer;
-                    onTokenChunk?.Invoke(answer);
-                    return response;
+                    answer = Regex.Replace(answer, @"[\*#`_>\[\]]", "").Trim();
+                    if (!string.IsNullOrWhiteSpace(answer) && !answer.Contains("<!DOCTYPE html>"))
+                    {
+                        response.textContent = answer;
+                        onTokenChunk?.Invoke(answer);
+                        return response;
+                    }
                 }
             }
             catch (Exception ex)
@@ -116,29 +146,58 @@ namespace FiveGLab.VoiceAgent
                 Debug.LogWarning($"[DirectFreeLanguageModel] Public AI fallback triggered: {ex.Message}");
             }
 
-            // 3. Fallback to Local Knowledge Base
+            // 3. Fallback to Local 5G Knowledge Base (Instant & Offline)
             if (knowledge != null)
             {
-                if (lowerQuery.Contains("beamform"))
+                if (lowerQuery.Contains("beamform") || lowerQuery.Contains("focus") || lowerQuery.Contains("spotlight"))
                 {
-                    response.textContent = "Active beamforming uses multiple antenna elements to shape and focus radio waves directly toward user devices like a spotlight, reducing interference and boosting speeds.";
+                    response.textContent = "Active beamforming uses multiple antenna elements to shape and focus radio waves directly toward user devices like a spotlight, reducing interference and boosting data speeds.";
                 }
-                else if (lowerQuery.Contains("latency"))
+                else if (lowerQuery.Contains("mimo"))
                 {
-                    response.textContent = "The MEC Core achieves under one millisecond latency by processing data right at the edge of the network, enabling real-time robotics and autonomous vehicles.";
+                    response.textContent = "Massive MIMO employs large arrays of antenna elements to transmit and receive multiple data streams simultaneously on the exact same frequency band.";
                 }
-                else if (lowerQuery.Contains("spectrum") || lowerQuery.Contains("rbw"))
+                else if (lowerQuery.Contains("gnodeb") || lowerQuery.Contains("base station") || lowerQuery.Contains("antenna") || lowerQuery.Contains("tower"))
+                {
+                    response.textContent = "The gNodeB is our 5G base station. It connects mobile devices to the core network over 5G New Radio using Massive MIMO and high-performance radio units.";
+                }
+                else if (lowerQuery.Contains("latency") || lowerQuery.Contains("1 ms") || lowerQuery.Contains("delay") || lowerQuery.Contains("speed"))
+                {
+                    response.textContent = "Under one millisecond latency is achieved by placing the MEC Core right next to the base station, enabling instant responses for robotics and autonomous vehicles.";
+                }
+                else if (lowerQuery.Contains("mec") || lowerQuery.Contains("edge") || lowerQuery.Contains("server") || lowerQuery.Contains("rack") || lowerQuery.Contains("bbu"))
+                {
+                    response.textContent = "The Mobile Edge Computing server rack processes heavy compute loads and baseband data right at the edge of the network, eliminating round-trips to distant cloud servers.";
+                }
+                else if (lowerQuery.Contains("spectrum") || lowerQuery.Contains("analyzer") || lowerQuery.Contains("rf") || lowerQuery.Contains("measure"))
                 {
                     response.textContent = "The RF Spectrum Analyzer measures signal power across frequencies from two hertz to eighty-five gigahertz, allowing engineers to verify clean emissions and catch interference.";
+                }
+                else if (lowerQuery.Contains("rbw") || lowerQuery.Contains("resolution") || lowerQuery.Contains("bandwidth"))
+                {
+                    response.textContent = "Resolution bandwidth, or RBW, defines the frequency resolution of the analyzer. A narrower RBW distinguishes closely spaced signals and lowers the display noise floor.";
+                }
+                else if (lowerQuery.Contains("mmwave") || lowerQuery.Contains("millimeter") || lowerQuery.Contains("frequency") || lowerQuery.Contains("ghz"))
+                {
+                    response.textContent = "5G operates across Sub-6 gigahertz for wide geographic coverage, and millimeter wave above twenty-four gigahertz for multi-gigabit throughput.";
+                }
+                else if (lowerQuery.Contains("nr") || lowerQuery.Contains("new radio") || lowerQuery.Contains("stand for"))
+                {
+                    response.textContent = "5G NR stands for 5G New Radio, the global wireless standard designed for higher speeds, lower latency, and massive device connectivity.";
                 }
                 else if (LabContext.CurrentInspected != EquipmentId.None)
                 {
                     var data = knowledge.GetEquipment(LabContext.CurrentInspected);
                     response.textContent = $"You are currently inspecting the {data?.displayName}. {data?.oneLiner}";
                 }
+                else if (LabContext.CurrentHovered != EquipmentId.None)
+                {
+                    var data = knowledge.GetEquipment(LabContext.CurrentHovered);
+                    response.textContent = $"That is the {data?.displayName}. {data?.oneLiner}";
+                }
                 else
                 {
-                    response.textContent = "I am Aria, your 5G lab tutor! You can inspect the gNodeB antenna, the MEC server rack, or the RF spectrum analyzer, or ask me anything about 5G.";
+                    response.textContent = "5G combines high-speed radio from the gNodeB, under one millisecond computing from the MEC Core, and precision RF diagnostics from the Spectrum Analyzer. What would you like to explore?";
                 }
             }
 
@@ -308,17 +367,18 @@ namespace FiveGLab.VoiceAgent
                 Debug.LogWarning($"[DirectFreeSpeechToText] Python STT exception: {ex.Message}");
             }
 
-            // 3. Contextual fallback if speech was not intelligible
+            // 3. Contextual fallback if inspecting or hovering equipment
             if (LabContext.CurrentInspected != EquipmentId.None)
             {
-                return $"Tell me about this {LabContext.CurrentInspected.GetDisplayName()}.";
+                return $"Tell me about the {LabContext.CurrentInspected.GetDisplayName()}.";
             }
             if (LabContext.CurrentHovered != EquipmentId.None)
             {
-                return $"What is this {LabContext.CurrentHovered.GetDisplayName()}?";
+                return $"What is the {LabContext.CurrentHovered.GetDisplayName()}?";
             }
 
-            return "What does this 5G lab do?";
+            // Audio was silent or unintelligible; return empty so VoiceAgentManager prompts user to speak into mic
+            return string.Empty;
         }
     }
 }
