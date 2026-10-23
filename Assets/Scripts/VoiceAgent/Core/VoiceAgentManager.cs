@@ -206,6 +206,8 @@ namespace FiveGLab.VoiceAgent
 
         private async Task ProcessTextQueryAsync(string userText, CancellationToken ct)
         {
+            if (config.debugLogging) Debug.Log($"[VoiceAgentManager] Processing Query: \"{userText}\"");
+
             // 1. Check if Guided Tour is expecting a quiz response
             if (GuidedTourController.Instance != null && GuidedTourController.Instance.IsTourActive)
             {
