@@ -10,6 +10,8 @@ namespace FiveGLab.VoiceAgent
 
         private VoiceAgentManager manager;
         private bool isPttActive = false;
+        private float pttStartTime = 0f;
+        private bool isToggleMode = false;
 
         // VAD state
         private float silenceTimer = 0f;
@@ -52,13 +54,13 @@ namespace FiveGLab.VoiceAgent
                 typedQuery = "";
             }
 
-            // Quick Shortcut keys for testing in Mock / Desktop
+            // Quick Shortcut keys for testing
             if (!isTypingOpen)
             {
                 CheckQuickKeys();
             }
 
-            // Push-to-Talk Handling
+            // Push-to-Talk & Toggle-to-Talk Handling
             KeyCode pttKey = manager.Config != null ? manager.Config.pttKey : KeyCode.V;
             bool pttDown = false;
             bool pttUp = false;
@@ -80,11 +82,37 @@ namespace FiveGLab.VoiceAgent
 
             if (pttDown)
             {
-                OnPttDown();
+                if (!isPttActive)
+                {
+                    pttStartTime = Time.time;
+                    isToggleMode = false;
+                    OnPttDown();
+                }
+                else if (isToggleMode)
+                {
+                    // User pressed V again to finish speaking
+                    isToggleMode = false;
+                    OnPttUp();
+                }
             }
-            else if (pttUp)
+            else if (pttUp && isPttActive)
             {
-                OnPttUp();
+                float holdDuration = Time.time - pttStartTime;
+                if (holdDuration < 0.4f)
+                {
+                    // User tapped V quickly! Keep recording in Toggle Mode
+                    isToggleMode = true;
+                    if (manager.HUD != null)
+                    {
+                        manager.HUD.ShowSubtitle("<color=#4CAF50><b>Listening... (Speak your doubt, then press [V] to send)</b></color>");
+                    }
+                }
+                else
+                {
+                    // User held V and released after speaking
+                    isToggleMode = false;
+                    OnPttUp();
+                }
             }
 
             // VAD Handling
@@ -123,6 +151,20 @@ namespace FiveGLab.VoiceAgent
             if (k3) _ = manager.ProcessTypedInputAsync("Zoom in on the MEC core server rack");
             if (k4) _ = manager.ProcessTypedInputAsync("Take me to the gNodeB base station");
             if (k5) _ = manager.ProcessTypedInputAsync("What is active beamforming?");
+        }
+
+        public void ToggleSpeechRecording()
+        {
+            if (!isPttActive)
+            {
+                isToggleMode = true;
+                OnPttDown();
+            }
+            else
+            {
+                isToggleMode = false;
+                OnPttUp();
+            }
         }
 
         private void OnPttDown()
@@ -172,26 +214,34 @@ namespace FiveGLab.VoiceAgent
 
         private void OnGUI()
         {
-            // Sleek quick-test helper on Desktop
-            GUILayout.BeginArea(new Rect(15, Screen.height - 120, 520, 110));
-            GUI.color = new Color(0.1f, 0.1f, 0.1f, 0.85f);
-            GUI.Box(new Rect(0, 0, 520, 110), GUIContent.none);
+            // Dynamic scale helper for all screen resolutions (1080p, QHD 1440p, 4K)
+            float uiWidth = Mathf.Min(Screen.width * 0.8f, 620f);
+            float uiHeight = 110f;
+            float posX = (Screen.width - uiWidth) / 2f; // Centered at bottom
+            float posY = Screen.height - uiHeight - 20f;
+
+            GUILayout.BeginArea(new Rect(posX, posY, uiWidth, uiHeight));
+            GUI.color = new Color(0.1f, 0.1f, 0.1f, 0.92f);
+            GUI.Box(new Rect(0, 0, uiWidth, uiHeight), GUIContent.none);
             GUI.color = Color.white;
 
             GUILayout.BeginVertical();
             GUILayout.Space(6);
-            GUILayout.Label(" <color=#8AB4F8><b>ARIA VOICE TUTOR SHORTCUTS</b></color> (Press Key or Hold [V] to Talk):", GetRichStyle());
+            
+            string micStatus = isPttActive ? "<color=#4CAF50><b>[🎙️ RECORDING... CLICK TO STOP]</b></color>" : "<color=#8AB4F8><b>[🎙️ CLICK TO TALK (OR PRESS V)]</b></color>";
+            GUILayout.Label($" <b>ARIA 5G VOICE TUTOR</b>  {micStatus}", GetRichStyle());
 
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("[1] Start Tour")) _ = manager.ProcessTypedInputAsync("Start the 5G guided tour");
+            if (GUILayout.Button(isPttActive ? "🔴 STOP SPEAKING" : "🎙️ SPEAK NOW (V)")) ToggleSpeechRecording();
+            if (GUILayout.Button("[1] 5G Tour")) _ = manager.ProcessTypedInputAsync("Start the 5G guided tour");
             if (GUILayout.Button("[2] Spectrum")) _ = manager.ProcessTypedInputAsync("Take me to the spectrum analyzer");
             if (GUILayout.Button("[3] MEC Rack")) _ = manager.ProcessTypedInputAsync("Zoom in on the MEC core server rack");
-            if (GUILayout.Button("[4] gNodeB")) _ = manager.ProcessTypedInputAsync("Take me to the gNodeB base station");
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("[5] Ask: Beamforming?")) _ = manager.ProcessTypedInputAsync("What is active beamforming?");
-            if (GUILayout.Button("[T] Type Custom Question")) { isTypingOpen = true; }
+            if (GUILayout.Button("[4] gNodeB")) _ = manager.ProcessTypedInputAsync("Take me to the gNodeB base station");
+            if (GUILayout.Button("[5] Beamforming")) _ = manager.ProcessTypedInputAsync("What is active beamforming?");
+            if (GUILayout.Button("[T] Type Doubt")) { isTypingOpen = true; }
             if (GUILayout.Button("Exit Inspection")) _ = manager.ProcessTypedInputAsync("Exit inspection");
             GUILayout.EndHorizontal();
 
@@ -201,14 +251,14 @@ namespace FiveGLab.VoiceAgent
             // Custom typing modal
             if (isTypingOpen)
             {
-                GUI.color = new Color(0.1f, 0.1f, 0.1f, 0.95f);
+                GUI.color = new Color(0.1f, 0.1f, 0.1f, 0.96f);
                 GUI.Box(new Rect(Screen.width / 2 - 250, Screen.height / 2 - 60, 500, 120), GUIContent.none);
                 GUI.color = Color.white;
 
                 GUILayout.BeginArea(new Rect(Screen.width / 2 - 240, Screen.height / 2 - 50, 480, 100));
-                GUILayout.Label("<color=#8AB4F8><b>Ask Aria Anything:</b></color>", GetRichStyle());
+                GUILayout.Label("<color=#8AB4F8><b>Ask Aria Anything about 5G:</b></color>", GetRichStyle());
                 GUI.SetNextControlName("AriaInputField");
-                typedQuery = GUILayout.TextField(typedQuery, 120);
+                typedQuery = GUILayout.TextField(typedQuery, 140);
                 GUI.FocusControl("AriaInputField");
 
                 GUILayout.BeginHorizontal();

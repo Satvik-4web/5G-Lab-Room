@@ -184,11 +184,12 @@ namespace FiveGLab.VoiceAgent
     }
 
     /// <summary>
-    /// Direct Free STT supporting Groq Whisper or intelligent context fallback.
+    /// Direct Free STT supporting Groq Whisper or Python Google Speech Recognition (100% Free, Zero Key).
     /// </summary>
     public class DirectFreeSpeechToText : ISpeechToText
     {
         private readonly string groqKey;
+        private readonly string scriptPath = "D:/5G-Lab-Room/transcribe.py";
 
         public DirectFreeSpeechToText(string groqApiKey = null)
         {
@@ -238,9 +239,43 @@ namespace FiveGLab.VoiceAgent
                 }
             }
 
-            // 2. Intelligent Context-Aware Fallback
-            await Task.Delay(200, ct);
+            // 2. Real Google Speech Recognition via Python transcribe.py (100% Free, Zero Key)
+            try
+            {
+                string tempWav = System.IO.Path.Combine(Application.temporaryCachePath, "recorded_speech.wav");
+                await System.IO.File.WriteAllBytesAsync(tempWav, wavAudio, ct);
 
+                if (System.IO.File.Exists(scriptPath))
+                {
+                    var psi = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "python",
+                        Arguments = $"\"{scriptPath}\" \"{tempWav}\"",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+
+                    using var proc = System.Diagnostics.Process.Start(psi);
+                    if (proc != null)
+                    {
+                        string output = await proc.StandardOutput.ReadToEndAsync();
+                        await proc.WaitForExitAsync(ct);
+                        if (!string.IsNullOrWhiteSpace(output))
+                        {
+                            Debug.Log($"[DirectFreeSpeechToText] Recognized: \"{output.Trim()}\"");
+                            return output.Trim();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[DirectFreeSpeechToText] Python STT exception: {ex.Message}");
+            }
+
+            // 3. Contextual fallback if speech was not intelligible
             if (LabContext.CurrentInspected != EquipmentId.None)
             {
                 return $"Tell me about this {LabContext.CurrentInspected.GetDisplayName()}.";

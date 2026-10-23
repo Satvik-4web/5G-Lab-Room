@@ -13,22 +13,20 @@ namespace FiveGLab.VoiceAgent
         [SerializeField] private int maxRecordingSeconds = 20;
 
         private AudioClip recordingClip;
-        private string micDevice = null; // null uses Windows/Android default recording device
+        private string micDevice = null;
         private int captureSampleRate = 44100;
         private bool isRecording = false;
 
-        // Preallocated buffer for RMS computation
-        private float[] preallocatedBuffer;
         private float currentRms = 0f;
 
         public bool IsRecording => isRecording;
         public float CurrentRms => currentRms;
+        public string ActiveDeviceName => micDevice;
 
         public event Action<bool> OnPermissionResult;
 
         private void Awake()
         {
-            preallocatedBuffer = new float[1024];
             RequestMicrophonePermission();
         }
 
@@ -51,20 +49,44 @@ namespace FiveGLab.VoiceAgent
             return Microphone.devices != null && Microphone.devices.Length > 0;
         }
 
+        private string FindBestMicrophoneDevice()
+        {
+            if (Microphone.devices == null || Microphone.devices.Length == 0) return null;
+
+            // Prioritize physical microphones (Realtek, Array, etc.) over virtual disconnected devices (Oculus)
+            foreach (var dev in Microphone.devices)
+            {
+                if (dev.IndexOf("Oculus", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    dev.IndexOf("Virtual", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    continue;
+                }
+                if (dev.IndexOf("Realtek", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    dev.IndexOf("Array", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    dev.IndexOf("Microphone", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return dev;
+                }
+            }
+
+            // Fallback to first available device
+            return Microphone.devices[0];
+        }
+
         public bool StartRecording()
         {
             if (isRecording) return true;
 
             if (!HasMicrophoneDevice())
             {
-                Debug.LogWarning("[MicrophoneCapture] No active microphone detected on this system.");
+                Debug.LogWarning("[MicrophoneCapture] No microphone device detected on this system.");
                 return false;
             }
 
-            // Always use null to select system default microphone
-            micDevice = null;
+            micDevice = FindBestMicrophoneDevice();
+            Debug.Log($"[MicrophoneCapture] Recording from microphone: '{micDevice}'");
 
-            // Determine optimal supported hardware sample rate
+            // Query supported frequency range
             int minFreq, maxFreq;
             Microphone.GetDeviceCaps(micDevice, out minFreq, out maxFreq);
 
@@ -84,12 +106,12 @@ namespace FiveGLab.VoiceAgent
             recordingClip = Microphone.Start(micDevice, false, maxRecordingSeconds, captureSampleRate);
             if (recordingClip == null)
             {
-                Debug.LogError("[MicrophoneCapture] Microphone.Start failed to create audio clip.");
+                Debug.LogError($"[MicrophoneCapture] Microphone.Start failed for device '{micDevice}'.");
                 return false;
             }
 
             isRecording = true;
-            currentRms = 0.05f; // Initial visual pulse
+            currentRms = 0.05f;
             return true;
         }
 
@@ -104,13 +126,12 @@ namespace FiveGLab.VoiceAgent
 
             if (micPosition <= 0)
             {
-                // If position hasn't updated yet (very short tap), take whatever samples are in clip
                 micPosition = Mathf.Min(recordingClip.samples, captureSampleRate * 2);
             }
 
             if (micPosition <= 128)
             {
-                Debug.LogWarning("[MicrophoneCapture] Recording too short (<128 samples).");
+                Debug.LogWarning("[MicrophoneCapture] Recording duration too short (<128 samples).");
                 if (recordingClip != null) { Destroy(recordingClip); recordingClip = null; }
                 return null;
             }
@@ -118,7 +139,6 @@ namespace FiveGLab.VoiceAgent
             float[] rawSamples = new float[micPosition];
             recordingClip.GetData(rawSamples, 0);
 
-            // Destroy clip to prevent memory leaks
             Destroy(recordingClip);
             recordingClip = null;
 
