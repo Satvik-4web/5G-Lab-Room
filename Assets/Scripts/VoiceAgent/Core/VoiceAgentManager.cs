@@ -189,6 +189,7 @@ namespace FiveGLab.VoiceAgent
                 }
 
                 if (config.debugLogging) Debug.Log($"[VoiceAgentManager] Transcribed: \"{transcript}\"");
+                if (hud != null) hud.ShowSubtitle($"<color=#8AB4F8><b>You:</b> \"{transcript}\"</color>");
                 await ProcessTextQueryAsync(transcript, ct);
             }
             catch (OperationCanceledException)

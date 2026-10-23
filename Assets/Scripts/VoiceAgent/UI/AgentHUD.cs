@@ -34,6 +34,10 @@ namespace FiveGLab.VoiceAgent
             if (VoiceAgentManager.Instance != null)
             {
                 micCapture = VoiceAgentManager.Instance.GetComponentInChildren<MicrophoneCapture>();
+                if (micCapture != null)
+                {
+                    micCapture.OnDeviceChanged += (dev) => UpdateStateVisuals(VoiceAgentManager.Instance.CurrentState);
+                }
             }
             UpdateStateVisuals(AgentState.Idle);
         }
@@ -42,21 +46,28 @@ namespace FiveGLab.VoiceAgent
         {
             if (statusText == null) return;
 
+            string micName = micCapture != null ? micCapture.GetFriendlyDeviceName() : "Mic";
+
             switch (state)
             {
                 case AgentState.Idle:
-                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#CCCCCC>| Hold [V] to Talk | [1] Tour | [2] Spectrum | [3] MEC | [4] gNodeB | [T] Ask</color>";
+                    statusText.text = $"<color=#8AB4F8><b>ARIA</b></color> <color=#CCCCCC>| Hold [V] to Talk | [M] {micName} | [1] Tour | [T] Ask</color>";
                     if (micIconImage != null) micIconImage.color = new Color(0.6f, 0.6f, 0.6f, 0.7f);
-                    if (levelMeterBar != null) levelMeterBar.fillAmount = 0f;
+                    if (levelMeterBar != null)
+                    {
+                        levelMeterBar.color = new Color(0.54f, 0.71f, 0.97f, 0.6f);
+                        levelMeterBar.fillAmount = 0f;
+                    }
                     break;
 
                 case AgentState.Listening:
-                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#4CAF50>| Listening to your voice...</color>";
-                    if (micIconImage != null) micIconImage.color = new Color(0.3f, 0.9f, 0.4f, 1f);
+                    statusText.text = $"<color=#8AB4F8><b>ARIA</b></color> <color=#00E676><b>| RECORDING ({micName})... Speak now! [V] Stop</b></color>";
+                    if (micIconImage != null) micIconImage.color = new Color(0f, 0.95f, 0.45f, 1f);
+                    if (levelMeterBar != null) levelMeterBar.color = new Color(0f, 0.95f, 0.45f, 1f);
                     break;
 
                 case AgentState.Transcribing:
-                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#FFCA28>| Processing speech...</color>";
+                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#FFCA28><b>| Processing speech...</b></color>";
                     if (micIconImage != null) micIconImage.color = new Color(1f, 0.8f, 0.2f, 1f);
                     if (levelMeterBar != null) levelMeterBar.fillAmount = 0f;
                     break;
@@ -67,7 +78,7 @@ namespace FiveGLab.VoiceAgent
                     break;
 
                 case AgentState.Speaking:
-                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#FFFFFF>| Speaking (Google Neural Voice)</color>";
+                    statusText.text = "<color=#8AB4F8><b>ARIA</b></color> <color=#FFFFFF>| Speaking (Aria)</color>";
                     if (micIconImage != null) micIconImage.color = new Color(0.54f, 0.71f, 0.97f, 1f);
                     break;
 
@@ -109,8 +120,8 @@ namespace FiveGLab.VoiceAgent
             // Animate mic level meter during Listening
             if (levelMeterBar != null && micCapture != null && micCapture.IsRecording)
             {
-                float rms = Mathf.Clamp01(micCapture.CurrentRms * 12f);
-                levelMeterBar.fillAmount = Mathf.Lerp(levelMeterBar.fillAmount, rms, Time.deltaTime * 15f);
+                float rms = Mathf.Clamp01(micCapture.CurrentRms * 14f);
+                levelMeterBar.fillAmount = Mathf.Lerp(levelMeterBar.fillAmount, Mathf.Max(0.08f, rms), Time.deltaTime * 18f);
             }
             else if (levelMeterBar != null && levelMeterBar.fillAmount > 0.01f)
             {
@@ -140,7 +151,7 @@ namespace FiveGLab.VoiceAgent
                 rect.sizeDelta = new Vector2(620, 120);
                 rect.localScale = Vector3.one * 0.0016f;
 
-                // Background Panel (#1A1A1A at 85% opacity)
+                // Background Panel (#1A1A1A at 88% opacity)
                 var bgGO = new GameObject("Background");
                 bgGO.transform.SetParent(hudRoot.transform, false);
                 backgroundImage = bgGO.AddComponent<Image>();
@@ -151,18 +162,18 @@ namespace FiveGLab.VoiceAgent
                 bgRect.offsetMin = Vector2.zero;
                 bgRect.offsetMax = Vector2.zero;
 
-                // Level Meter Bar
+                // Level Meter Bar (Height 5px, reactive)
                 var meterGO = new GameObject("LevelMeter");
                 meterGO.transform.SetParent(hudRoot.transform, false);
                 levelMeterBar = meterGO.AddComponent<Image>();
                 levelMeterBar.type = Image.Type.Filled;
                 levelMeterBar.fillMethod = Image.FillMethod.Horizontal;
-                levelMeterBar.color = new Color(0.54f, 0.71f, 0.97f, 0.9f);
+                levelMeterBar.color = new Color(0f, 0.95f, 0.45f, 1f);
                 var meterRect = meterGO.GetComponent<RectTransform>();
                 meterRect.anchorMin = new Vector2(0, 0);
                 meterRect.anchorMax = new Vector2(1, 0);
                 meterRect.pivot = new Vector2(0.5f, 0);
-                meterRect.sizeDelta = new Vector2(0, 3f);
+                meterRect.sizeDelta = new Vector2(0, 5f);
                 meterRect.anchoredPosition = Vector2.zero;
 
                 // Status text
@@ -184,7 +195,7 @@ namespace FiveGLab.VoiceAgent
                 subtitleText = subGO.AddComponent<TextMeshProUGUI>();
                 subtitleText.fontSize = 15;
                 subtitleText.color = new Color(0.92f, 0.92f, 0.92f, 1f); // Off-white #E0E0E0
-                subtitleText.enableWordWrapping = true;
+                subtitleText.textWrappingMode = TextWrappingModes.Normal;
                 subtitleText.alignment = TextAlignmentOptions.TopLeft;
                 subtitleText.text = "";
                 var subRect = subGO.GetComponent<RectTransform>();

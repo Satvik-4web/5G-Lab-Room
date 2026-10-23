@@ -197,7 +197,7 @@ namespace FiveGLab.VoiceAgent
                 _ => ""
             };
 
-            var renderers = GameObject.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+            var renderers = GameObject.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             foreach (var r in renderers)
             {
                 if (r.gameObject.name.Contains(searchKey) || (r.transform.parent != null && r.transform.parent.name.Contains(searchKey)))

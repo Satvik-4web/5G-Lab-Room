@@ -225,7 +225,18 @@ namespace FiveGLab.VoiceAgent
             float elapsed = 0;
             while (isWaitingForQuizAnswer && elapsed < timeoutSeconds)
             {
-                elapsed += Time.deltaTime;
+                // If user is currently holding V, speaking, or agent is transcribing/thinking, pause timeout!
+                if (VoiceAgentManager.Instance != null &&
+                    (VoiceAgentManager.Instance.CurrentState == AgentState.Listening ||
+                     VoiceAgentManager.Instance.CurrentState == AgentState.Transcribing ||
+                     VoiceAgentManager.Instance.CurrentState == AgentState.Thinking))
+                {
+                    elapsed = 0f; // Give user uninterrupted time to answer!
+                }
+                else
+                {
+                    elapsed += Time.deltaTime;
+                }
                 yield return null;
             }
 

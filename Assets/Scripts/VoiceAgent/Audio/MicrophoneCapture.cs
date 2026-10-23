@@ -14,20 +14,24 @@ namespace FiveGLab.VoiceAgent
 
         private AudioClip recordingClip;
         private string micDevice = null;
-        private int captureSampleRate = 44100;
+        private int captureSampleRate = 16000;
         private bool isRecording = false;
+        private int currentDeviceIndex = 0;
 
         private float currentRms = 0f;
 
         public bool IsRecording => isRecording;
         public float CurrentRms => currentRms;
         public string ActiveDeviceName => micDevice;
+        public int ActiveDeviceIndex => currentDeviceIndex;
 
         public event Action<bool> OnPermissionResult;
+        public event Action<string> OnDeviceChanged;
 
         private void Awake()
         {
             RequestMicrophonePermission();
+            InitializeDefaultDevice();
         }
 
         public void RequestMicrophonePermission()
@@ -49,28 +53,74 @@ namespace FiveGLab.VoiceAgent
             return Microphone.devices != null && Microphone.devices.Length > 0;
         }
 
-        private string FindBestMicrophoneDevice()
+        private void InitializeDefaultDevice()
         {
-            if (Microphone.devices == null || Microphone.devices.Length == 0) return null;
+            if (Microphone.devices == null || Microphone.devices.Length == 0) return;
 
-            // Prioritize physical microphones (Realtek, Array, etc.) over virtual disconnected devices (Oculus)
-            foreach (var dev in Microphone.devices)
+            // Priority:
+            // 1. Bluetooth headset (e.g. Master Buds) if connected
+            // 2. Built-in Laptop Microphone Array (Realtek)
+            // 3. Fallback to first non-virtual device
+            int bestIdx = 0;
+            for (int i = 0; i < Microphone.devices.Length; i++)
             {
+                string dev = Microphone.devices[i];
                 if (dev.IndexOf("Oculus", StringComparison.OrdinalIgnoreCase) >= 0 ||
                     dev.IndexOf("Virtual", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     continue;
                 }
-                if (dev.IndexOf("Realtek", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    dev.IndexOf("Array", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    dev.IndexOf("Microphone", StringComparison.OrdinalIgnoreCase) >= 0)
+
+                if (dev.IndexOf("Buds", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    dev.IndexOf("Headset", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    dev.IndexOf("Bluetooth", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    return dev;
+                    bestIdx = i;
+                    break;
+                }
+
+                if (dev.IndexOf("Realtek", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    dev.IndexOf("Array", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    bestIdx = i;
                 }
             }
 
-            // Fallback to first available device
-            return Microphone.devices[0];
+            currentDeviceIndex = bestIdx;
+            micDevice = Microphone.devices[currentDeviceIndex];
+        }
+
+        public string GetFriendlyDeviceName()
+        {
+            if (string.IsNullOrEmpty(micDevice)) return "No Mic";
+            if (micDevice.IndexOf("Master Buds", StringComparison.OrdinalIgnoreCase) >= 0) return "Master Buds";
+            if (micDevice.IndexOf("Realtek", StringComparison.OrdinalIgnoreCase) >= 0) return "Laptop Mic (Realtek)";
+            if (micDevice.IndexOf("Array", StringComparison.OrdinalIgnoreCase) >= 0) return "Mic Array";
+            if (micDevice.Length > 20) return micDevice.Substring(0, 20) + "...";
+            return micDevice;
+        }
+
+        public void CycleToNextDevice()
+        {
+            if (Microphone.devices == null || Microphone.devices.Length == 0) return;
+
+            if (isRecording)
+            {
+                CancelRecording();
+            }
+
+            currentDeviceIndex = (currentDeviceIndex + 1) % Microphone.devices.Length;
+            // Skip Oculus/Virtual if others exist
+            if (Microphone.devices.Length > 1 &&
+                (Microphone.devices[currentDeviceIndex].IndexOf("Oculus", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 Microphone.devices[currentDeviceIndex].IndexOf("Virtual", StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                currentDeviceIndex = (currentDeviceIndex + 1) % Microphone.devices.Length;
+            }
+
+            micDevice = Microphone.devices[currentDeviceIndex];
+            Debug.Log($"[MicrophoneCapture] Active mic switched to [{currentDeviceIndex}]: '{micDevice}'");
+            OnDeviceChanged?.Invoke(micDevice);
         }
 
         public bool StartRecording()
@@ -83,27 +133,36 @@ namespace FiveGLab.VoiceAgent
                 return false;
             }
 
-            micDevice = FindBestMicrophoneDevice();
-            Debug.Log($"[MicrophoneCapture] Recording from microphone: '{micDevice}'");
+            if (string.IsNullOrEmpty(micDevice))
+            {
+                InitializeDefaultDevice();
+            }
 
-            // Query supported frequency range
+            // Query hardware supported frequency range
             int minFreq, maxFreq;
             Microphone.GetDeviceCaps(micDevice, out minFreq, out maxFreq);
 
             if (minFreq == 0 && maxFreq == 0)
             {
-                captureSampleRate = 44100;
+                // Unrestricted; 16000 is ideal standard for speech recognition
+                captureSampleRate = 16000;
             }
-            else if (maxFreq > 0 && maxFreq < 44100)
+            else if (16000 >= minFreq && 16000 <= maxFreq)
             {
-                captureSampleRate = maxFreq;
+                captureSampleRate = 16000;
+            }
+            else if (48000 >= minFreq && 48000 <= maxFreq)
+            {
+                captureSampleRate = 48000;
             }
             else
             {
-                captureSampleRate = 44100;
+                captureSampleRate = Mathf.Clamp(44100, minFreq, maxFreq);
             }
 
-            recordingClip = Microphone.Start(micDevice, false, maxRecordingSeconds, captureSampleRate);
+            Debug.Log($"[MicrophoneCapture] Starting recording on '{micDevice}' at {captureSampleRate} Hz (Caps: {minFreq}-{maxFreq})");
+
+            recordingClip = Microphone.Start(micDevice, true, maxRecordingSeconds, captureSampleRate);
             if (recordingClip == null)
             {
                 Debug.LogError($"[MicrophoneCapture] Microphone.Start failed for device '{micDevice}'.");
@@ -129,9 +188,9 @@ namespace FiveGLab.VoiceAgent
                 micPosition = Mathf.Min(recordingClip.samples, captureSampleRate * 2);
             }
 
-            if (micPosition <= 128)
+            if (micPosition < 512)
             {
-                Debug.LogWarning("[MicrophoneCapture] Recording duration too short (<128 samples).");
+                Debug.LogWarning($"[MicrophoneCapture] Recording duration too short ({micPosition} samples).");
                 if (recordingClip != null) { Destroy(recordingClip); recordingClip = null; }
                 return null;
             }
@@ -141,6 +200,23 @@ namespace FiveGLab.VoiceAgent
 
             Destroy(recordingClip);
             recordingClip = null;
+
+            // Amplify / Normalize quiet speech signals (gain boost for laptop mic / Bluetooth buds)
+            float maxPeak = 0f;
+            for (int i = 0; i < rawSamples.Length; i++)
+            {
+                float abs = Mathf.Abs(rawSamples[i]);
+                if (abs > maxPeak) maxPeak = abs;
+            }
+
+            if (maxPeak > 0.003f && maxPeak < 0.70f)
+            {
+                float gain = Mathf.Min(0.85f / maxPeak, 12f);
+                for (int i = 0; i < rawSamples.Length; i++)
+                {
+                    rawSamples[i] = Mathf.Clamp(rawSamples[i] * gain, -1f, 1f);
+                }
+            }
 
             // Resample down to standard 16kHz mono for speech recognition
             float[] resampled16k = ResampleTo16k(rawSamples, captureSampleRate);

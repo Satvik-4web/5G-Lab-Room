@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -189,11 +190,28 @@ namespace FiveGLab.VoiceAgent
     public class DirectFreeSpeechToText : ISpeechToText
     {
         private readonly string groqKey;
-        private readonly string scriptPath = "D:/5G-Lab-Room/transcribe.py";
+        private readonly string scriptPath = @"D:\5G-Lab-Room\transcribe.py";
 
         public DirectFreeSpeechToText(string groqApiKey = null)
         {
             this.groqKey = groqApiKey;
+        }
+
+        private string ResolvePythonExecutable()
+        {
+            string[] candidates = new string[]
+            {
+                @"C:\Users\satvi\AppData\Local\Programs\Python\Python310\python.exe",
+                @"C:\Program Files\Python310\python.exe",
+                "python.exe",
+                "python"
+            };
+
+            foreach (var path in candidates)
+            {
+                if (File.Exists(path)) return path;
+            }
+            return "python";
         }
 
         public async Task<string> TranscribeAsync(byte[] wavAudio, CancellationToken ct)
@@ -242,14 +260,15 @@ namespace FiveGLab.VoiceAgent
             // 2. Real Google Speech Recognition via Python transcribe.py (100% Free, Zero Key)
             try
             {
-                string tempWav = System.IO.Path.Combine(Application.temporaryCachePath, "recorded_speech.wav");
-                await System.IO.File.WriteAllBytesAsync(tempWav, wavAudio, ct);
+                string tempWav = Path.Combine(Application.temporaryCachePath, "recorded_speech.wav");
+                File.WriteAllBytes(tempWav, wavAudio);
 
-                if (System.IO.File.Exists(scriptPath))
+                if (File.Exists(scriptPath))
                 {
+                    string pythonExe = ResolvePythonExecutable();
                     var psi = new System.Diagnostics.ProcessStartInfo
                     {
-                        FileName = "python",
+                        FileName = pythonExe,
                         Arguments = $"\"{scriptPath}\" \"{tempWav}\"",
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
@@ -260,15 +279,29 @@ namespace FiveGLab.VoiceAgent
                     using var proc = System.Diagnostics.Process.Start(psi);
                     if (proc != null)
                     {
-                        string output = await proc.StandardOutput.ReadToEndAsync();
-                        await proc.WaitForExitAsync(ct);
+                        var readTask = proc.StandardOutput.ReadToEndAsync();
+                        while (!proc.HasExited)
+                        {
+                            if (ct.IsCancellationRequested)
+                            {
+                                try { proc.Kill(); } catch { }
+                                ct.ThrowIfCancellationRequested();
+                            }
+                            await Task.Yield();
+                        }
+                        string output = await readTask;
                         if (!string.IsNullOrWhiteSpace(output))
                         {
-                            Debug.Log($"[DirectFreeSpeechToText] Recognized: \"{output.Trim()}\"");
-                            return output.Trim();
+                            string recognizedText = output.Trim();
+                            Debug.Log($"[DirectFreeSpeechToText] Recognized: \"{recognizedText}\"");
+                            return recognizedText;
                         }
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

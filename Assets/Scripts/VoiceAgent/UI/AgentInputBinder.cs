@@ -39,14 +39,8 @@ namespace FiveGLab.VoiceAgent
 
             // Toggle Typed Input with 'T'
             bool tPressed = false;
-            if (Keyboard.current != null)
-            {
-                if (Keyboard.current.tKey.wasPressedThisFrame) tPressed = true;
-            }
-            else
-            {
-                try { if (Input.GetKeyDown(KeyCode.T)) tPressed = true; } catch { }
-            }
+            if (Keyboard.current != null && Keyboard.current.tKey.wasPressedThisFrame) tPressed = true;
+            try { if (Input.GetKeyDown(KeyCode.T)) tPressed = true; } catch { }
 
             if (tPressed && !isTypingOpen)
             {
@@ -60,8 +54,26 @@ namespace FiveGLab.VoiceAgent
                 CheckQuickKeys();
             }
 
-            // Push-to-Talk & Toggle-to-Talk Handling
-            KeyCode pttKey = manager.Config != null ? manager.Config.pttKey : KeyCode.V;
+            // Microphone device switch key [M]
+            bool mPressed = false;
+            if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame) mPressed = true;
+            try { if (Input.GetKeyDown(KeyCode.M)) mPressed = true; } catch { }
+
+            if (mPressed)
+            {
+                var mic = VoiceAgentManager.Instance?.GetComponentInChildren<MicrophoneCapture>();
+                if (mic != null)
+                {
+                    mic.CycleToNextDevice();
+                    if (manager.HUD != null)
+                    {
+                        manager.HUD.UpdateStateVisuals(manager.CurrentState);
+                        manager.HUD.ShowSubtitle($"<color=#8AB4F8><b>Microphone switched to: {mic.GetFriendlyDeviceName()}</b></color>");
+                    }
+                }
+            }
+
+            // Push-to-Talk & Toggle-to-Talk Handling (Both New Input System and Legacy)
             bool pttDown = false;
             bool pttUp = false;
 
@@ -70,15 +82,12 @@ namespace FiveGLab.VoiceAgent
                 if (Keyboard.current.vKey.wasPressedThisFrame) pttDown = true;
                 if (Keyboard.current.vKey.wasReleasedThisFrame) pttUp = true;
             }
-            else
+            try
             {
-                try
-                {
-                    if (Input.GetKeyDown(pttKey)) pttDown = true;
-                    if (Input.GetKeyUp(pttKey)) pttUp = true;
-                }
-                catch { }
+                if (Input.GetKeyDown(KeyCode.V)) pttDown = true;
+                if (Input.GetKeyUp(KeyCode.V)) pttUp = true;
             }
+            catch { }
 
             if (pttDown)
             {
@@ -90,7 +99,7 @@ namespace FiveGLab.VoiceAgent
                 }
                 else if (isToggleMode)
                 {
-                    // User pressed V again to finish speaking
+                    // User tapped V again to stop recording and send
                     isToggleMode = false;
                     OnPttUp();
                 }
@@ -98,18 +107,18 @@ namespace FiveGLab.VoiceAgent
             else if (pttUp && isPttActive)
             {
                 float holdDuration = Time.time - pttStartTime;
-                if (holdDuration < 0.4f)
+                if (holdDuration < 0.35f)
                 {
-                    // User tapped V quickly! Keep recording in Toggle Mode
+                    // Quick tap -> switch to toggle mode (keep recording until next V tap)
                     isToggleMode = true;
                     if (manager.HUD != null)
                     {
-                        manager.HUD.ShowSubtitle("<color=#4CAF50><b>Listening... (Speak your doubt, then press [V] to send)</b></color>");
+                        manager.HUD.ShowSubtitle("<color=#00E676><b>[RECORDING] Speak your doubt now... (Press [V] when done)</b></color>");
                     }
                 }
                 else
                 {
-                    // User held V and released after speaking
+                    // Held V and released -> stop recording and process
                     isToggleMode = false;
                     OnPttUp();
                 }
@@ -133,18 +142,15 @@ namespace FiveGLab.VoiceAgent
                 k4 = Keyboard.current.digit4Key.wasPressedThisFrame;
                 k5 = Keyboard.current.digit5Key.wasPressedThisFrame;
             }
-            else
+            try
             {
-                try
-                {
-                    k1 = Input.GetKeyDown(KeyCode.Alpha1);
-                    k2 = Input.GetKeyDown(KeyCode.Alpha2);
-                    k3 = Input.GetKeyDown(KeyCode.Alpha3);
-                    k4 = Input.GetKeyDown(KeyCode.Alpha4);
-                    k5 = Input.GetKeyDown(KeyCode.Alpha5);
-                }
-                catch { }
+                if (Input.GetKeyDown(KeyCode.Alpha1)) k1 = true;
+                if (Input.GetKeyDown(KeyCode.Alpha2)) k2 = true;
+                if (Input.GetKeyDown(KeyCode.Alpha3)) k3 = true;
+                if (Input.GetKeyDown(KeyCode.Alpha4)) k4 = true;
+                if (Input.GetKeyDown(KeyCode.Alpha5)) k5 = true;
             }
+            catch { }
 
             if (k1) _ = manager.ProcessTypedInputAsync("Start the 5G guided tour");
             if (k2) _ = manager.ProcessTypedInputAsync("Take me to the spectrum analyzer");
@@ -159,6 +165,10 @@ namespace FiveGLab.VoiceAgent
             {
                 isToggleMode = true;
                 OnPttDown();
+                if (manager.HUD != null)
+                {
+                    manager.HUD.ShowSubtitle("<color=#00E676><b>[RECORDING] Speak now... (Click Stop or press [V] to send)</b></color>");
+                }
             }
             else
             {
@@ -171,78 +181,85 @@ namespace FiveGLab.VoiceAgent
         {
             if (isPttActive) return;
             isPttActive = true;
-            if (manager != null) manager.OnPttDown();
+            if (manager != null)
+            {
+                manager.OnPttDown();
+                if (manager.HUD != null)
+                {
+                    manager.HUD.ShowSubtitle("<color=#00E676><b>[RECORDING] Listening... Speak clearly into your mic!</b></color>");
+                }
+            }
         }
 
         private void OnPttUp()
         {
             if (!isPttActive) return;
             isPttActive = false;
-            if (manager != null) manager.OnPttUp();
+            if (manager != null)
+            {
+                if (manager.HUD != null)
+                {
+                    manager.HUD.ShowSubtitle("<color=#FFCA28><b>[PROCESSING] Transcribing speech...</b></color>");
+                }
+                manager.OnPttUp();
+            }
         }
 
         private void HandleVoiceActivityDetection()
         {
             var mic = manager.GetComponentInChildren<MicrophoneCapture>();
-            if (mic == null) return;
+            if (mic == null || !mic.IsRecording) return;
 
-            if (manager.CurrentState == AgentState.Idle)
+            float threshold = manager.Config.vadRmsThreshold;
+            if (mic.CurrentRms < threshold)
             {
-                if (mic.CurrentRms > manager.Config.vadRmsThreshold)
+                silenceTimer += Time.deltaTime;
+                if (silenceTimer >= manager.Config.vadSilenceHangTime)
                 {
-                    OnPttDown();
                     silenceTimer = 0f;
+                    OnPttUp();
                 }
             }
-            else if (manager.CurrentState == AgentState.Listening)
+            else
             {
-                if (mic.CurrentRms < manager.Config.vadRmsThreshold)
-                {
-                    silenceTimer += Time.deltaTime;
-                    if (silenceTimer >= manager.Config.vadSilenceHangTime)
-                    {
-                        OnPttUp();
-                        silenceTimer = 0f;
-                    }
-                }
-                else
-                {
-                    silenceTimer = 0f;
-                }
+                silenceTimer = 0f;
             }
         }
 
         private void OnGUI()
         {
-            // Dynamic scale helper for all screen resolutions (1080p, QHD 1440p, 4K)
-            float uiWidth = Mathf.Min(Screen.width * 0.8f, 620f);
-            float uiHeight = 110f;
-            float posX = (Screen.width - uiWidth) / 2f; // Centered at bottom
-            float posY = Screen.height - uiHeight - 20f;
+            if (manager == null) return;
 
-            GUILayout.BeginArea(new Rect(posX, posY, uiWidth, uiHeight));
-            GUI.color = new Color(0.1f, 0.1f, 0.1f, 0.92f);
-            GUI.Box(new Rect(0, 0, uiWidth, uiHeight), GUIContent.none);
+            var mic = manager.GetComponentInChildren<MicrophoneCapture>();
+            string micName = mic != null ? mic.GetFriendlyDeviceName() : "Mic";
+
+            // Compact Quick Access Banner in top-left
+            GUILayout.BeginArea(new Rect(15, 15, 520, 115));
+            GUI.color = new Color(0.12f, 0.12f, 0.12f, 0.92f);
+            GUI.Box(new Rect(0, 0, 520, 115), GUIContent.none);
             GUI.color = Color.white;
 
             GUILayout.BeginVertical();
-            GUILayout.Space(6);
             
-            string micStatus = isPttActive ? "<color=#4CAF50><b>[🎙️ RECORDING... CLICK TO STOP]</b></color>" : "<color=#8AB4F8><b>[🎙️ CLICK TO TALK (OR PRESS V)]</b></color>";
+            string micStatus = isPttActive ? "<color=#00E676><b>[🎙️ RECORDING... CLICK TO STOP]</b></color>" : "<color=#8AB4F8><b>[🎙️ HOLD V TO TALK]</b></color>";
             GUILayout.Label($" <b>ARIA 5G VOICE TUTOR</b>  {micStatus}", GetRichStyle());
 
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(isPttActive ? "🔴 STOP SPEAKING" : "🎙️ SPEAK NOW (V)")) ToggleSpeechRecording();
-            if (GUILayout.Button("[1] 5G Tour")) _ = manager.ProcessTypedInputAsync("Start the 5G guided tour");
+            if (GUILayout.Button($"🎧 Mic: {micName} [M]"))
+            {
+                mic?.CycleToNextDevice();
+                manager.HUD?.UpdateStateVisuals(manager.CurrentState);
+            }
+            if (GUILayout.Button("[1] Tour")) _ = manager.ProcessTypedInputAsync("Start the 5G guided tour");
             if (GUILayout.Button("[2] Spectrum")) _ = manager.ProcessTypedInputAsync("Take me to the spectrum analyzer");
-            if (GUILayout.Button("[3] MEC Rack")) _ = manager.ProcessTypedInputAsync("Zoom in on the MEC core server rack");
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
+            if (GUILayout.Button("[3] MEC Rack")) _ = manager.ProcessTypedInputAsync("Zoom in on the MEC core server rack");
             if (GUILayout.Button("[4] gNodeB")) _ = manager.ProcessTypedInputAsync("Take me to the gNodeB base station");
             if (GUILayout.Button("[5] Beamforming")) _ = manager.ProcessTypedInputAsync("What is active beamforming?");
-            if (GUILayout.Button("[T] Type Doubt")) { isTypingOpen = true; }
-            if (GUILayout.Button("Exit Inspection")) _ = manager.ProcessTypedInputAsync("Exit inspection");
+            if (GUILayout.Button("[T] Ask")) { isTypingOpen = true; }
             GUILayout.EndHorizontal();
 
             GUILayout.EndVertical();

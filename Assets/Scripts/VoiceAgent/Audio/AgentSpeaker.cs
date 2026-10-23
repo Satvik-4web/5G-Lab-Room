@@ -99,7 +99,7 @@ namespace FiveGLab.VoiceAgent
         public static void DuckOtherAudioSources()
         {
             // Find any playing AudioSource on equipment and stop it
-            AudioSource[] allSources = FindObjectsByType<AudioSource>(FindObjectsSortMode.None);
+            AudioSource[] allSources = FindObjectsByType<AudioSource>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             foreach (var src in allSources)
             {
                 if (src == null || !src.isPlaying) continue;

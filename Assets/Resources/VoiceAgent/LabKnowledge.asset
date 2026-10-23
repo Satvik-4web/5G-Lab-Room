@@ -1,0 +1,264 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69de82389fa2c5c499561e36587ac545, type: 3}
+  m_Name: LabKnowledge
+  m_EditorClassIdentifier: Assembly-CSharp::FiveGLab.VoiceAgent.LabKnowledgeBase
+  systemStory: User Equipment (phones, headsets) connects wirelessly to the gNodeB
+    base station using 5G NR beams. The gNodeB routes signals through high-speed
+    fiber and optical multiplexing to the MEC-Core, where Baseband Units (BBU) and
+    edge servers process compute-heavy workloads in under one millisecond. The RF
+    Spectrum Analyzer continuously monitors and diagnoses radio emissions to eliminate
+    interference and ensure flawless signal integrity.
+  equipmentList:
+  - id: 1
+    displayName: gNodeB (5G Base Station / Massive MIMO Antenna)
+    uiTitle: gNodeB (BASE STATION)
+    oneLiner: Physical radio access node connecting user devices to the 5G core with
+      massive MIMO and active beamforming.
+    role: The 5G Radio Access Network (RAN) node.
+    howItWorks: 'Massive MIMO utilizes a large array of antenna elements transmitting
+      and receiving simultaneously to serve multiple users on the same time-frequency
+      resources via spatial multiplexing.
+
+
+      Active beamforming adjusts signal
+      phases and amplitudes to concentrate radio energy into tight, directed beams
+      aimed directly at target user equipment rather than broadcasting in all directions.
+
+
+      This
+      dramatically improves Signal-to-Noise Ratio (SNR), conserves RF power, increases
+      cell capacity, and mitigates interference, which is particularly essential
+      for overcoming the high path loss of mmWave frequencies.'
+    keySpecs:
+    - 'Interface: 5G NR (New Radio)'
+    - 'Bands: Sub-6 GHz and mmWave'
+    - 'Antenna: Massive MIMO multi-element array'
+    - 'Technology: Active Beamforming'
+    - 'Status: ONLINE - Transmitting'
+    analogies:
+    - Like a focused flashlight with an adjustable lens rather than a bare lightbulb
+      radiating in all directions.
+    commonQuestions:
+    - question: What is beamforming?
+      answer: Beamforming coordinates multiple antenna elements so their waves combine
+        constructively toward your device, delivering faster speeds and less interference.
+    - question: What does gNodeB mean?
+      answer: It stands for next-generation Node B, which is the standard telecom
+        industry term for a 5G cellular base station.
+    relatedEquipment: 0200000003000000
+    quizQuestions:
+    - question: What does active beamforming do to radio signals?
+      acceptedKeywords:
+      - focus
+      - direct
+      - target
+      - narrow
+      - beam
+      - aim
+      - concentrate
+      explanation: Beamforming focuses radio energy into narrow directed beams aimed
+        specifically at active user devices.
+    - question: What does the 'g' in gNodeB stand for?
+      acceptedKeywords:
+      - next generation
+      - next-gen
+      - generation
+      - next gen
+      - new
+      explanation: The 'g' represents next-Generation Node B, the 3GPP designation
+        for 5G base stations.
+  - id: 2
+    displayName: Mobile Edge Computing (MEC-Core) Server Rack
+    uiTitle: MOBILE EDGE COMPUTING (MEC-CORE)
+    oneLiner: Local edge data center with BBU and optical multiplexing delivering
+      ultra-low latency compute under 1 millisecond.
+    role: Local edge processing and baseband aggregation.
+    howItWorks: 'By placing compute, GPU/CPU resources, and the Baseband Unit (BBU)
+      right at the cell tower or local facility, network packets no longer need to
+      travel hundreds of miles across public backhaul to distant cloud data centers.
+
+
+      The
+      onboard optical multiplexer consolidates multiple high-capacity optical carrier
+      streams onto fiber links.
+
+
+      This guarantees round-trip latencies below
+      1 ms, unlocking mission-critical Ultra-Reliable Low-Latency Communication (URLLC)
+      applications such as remote surgery, autonomous driving, AR/VR streaming, and
+      smart factory robotics.'
+    keySpecs:
+    - 'Compute: High-Performance GPU/CPU blade servers'
+    - 'Processing: Baseband Unit (BBU) signal processing'
+    - 'Interconnect: 100 Gbps Optical Multiplexer (MUX)'
+    - 'Latency: Ultra-Low (< 1 ms)'
+    - 'Status: ONLINE - Processing'
+    analogies:
+    - Like having a full kitchen inside your neighborhood restaurant instead of shipping
+      every meal from a central kitchen across the state.
+    commonQuestions:
+    - question: Why is latency under 1 millisecond important?
+      answer: Sub-millisecond latency enables real-time feedback loops required for
+        safety-critical robotics, automated vehicles, and responsive VR interactions.
+    - question: What is inside this rack?
+      answer: It houses high-density baseband compute processors, edge servers, and
+        optical multiplexing hardware for fiber transmission.
+    relatedEquipment: 0100000003000000
+    quizQuestions:
+    - question: Why do we place MEC servers at the edge of the network?
+      acceptedKeywords:
+      - latency
+      - closer
+      - speed
+      - real-time
+      - bandwidth
+      - local
+      - fast
+      explanation: Placing servers at the edge cuts latency to under 1 millisecond
+        and saves backhaul network bandwidth.
+    - question: Name one real-world use case that requires sub-millisecond latency.
+      acceptedKeywords:
+      - autonomous
+      - driving
+      - surgery
+      - robotics
+      - vr
+      - ar
+      - gaming
+      - car
+      - vehicle
+      explanation: Use cases like autonomous driving, remote surgery, and industrial
+        robotics demand instantaneous response times.
+  - id: 3
+    displayName: RF Spectrum Analyzer
+    uiTitle: SPECTRUM ANALYZER
+    oneLiner: Precision test bench diagnostic tool displaying signal power versus
+      frequency from 2 Hz to 85 GHz.
+    role: Radio Frequency diagnostic and compliance verification instrument.
+    howItWorks: 'The spectrum analyzer plots radio frequency amplitude on the vertical
+      Y-axis against frequency on the horizontal X-axis.
+
+
+      It allows RF engineers
+      to verify that the gNodeB operates strictly within its designated frequency
+      channel, measures occupied channel bandwidth, detects unwanted harmonic distortions,
+      and locates rogue interference.
+
+
+      Its Resolution Bandwidth (RBW) filter
+      adjusts between 1 Hz and 10 MHz: narrower RBW provides razor-sharp spectral
+      resolution and lowers the noise floor at the expense of sweep time, while wider
+      RBW provides rapid sweep updates.'
+    keySpecs:
+    - 'Frequency Range: 2 Hz to 85 GHz'
+    - 'Bands Covered: Sub-6 GHz and mmWave 5G bands'
+    - 'Resolution Bandwidth: 1 Hz to 10 MHz'
+    - 'Status: ONLINE'
+    analogies:
+    - Like a musical graphic equalizer that shows every instrument's pitch and volume
+      in real-time.
+    commonQuestions:
+    - question: What does this device measure?
+      answer: It measures signal power across different frequencies to verify clean
+        transmission and detect rogue interference.
+    - question: What is Resolution Bandwidth (RBW)?
+      answer: RBW is the bandpass filter size that determines how clearly the instrument
+        can distinguish closely spaced frequencies.
+    relatedEquipment: 0100000002000000
+    quizQuestions:
+    - question: What two variables does a spectrum analyzer plot on its screen?
+      acceptedKeywords:
+      - amplitude
+      - power
+      - frequency
+      - strength
+      - dbm
+      - hz
+      - magnitude
+      explanation: A spectrum analyzer plots signal amplitude (power) against frequency.
+    - question: Which two main 5G frequency regions does this instrument cover?
+      acceptedKeywords:
+      - sub-6
+      - mmwave
+      - sub 6
+      - millimeter
+      - mm-wave
+      explanation: It covers both Sub-6 GHz and mmWave 5G spectrum bands up to 85
+        GHz.
+  glossary:
+  - term: 5G NR
+    definition: 5G New Radio, the global 3GPP air interface standard for fifth-generation
+      mobile communications.
+  - term: UE
+    definition: User Equipment, any device like a smartphone, AR headset, or IoT
+      sensor connected to the mobile network.
+  - term: gNodeB
+    definition: Next-Generation Node B, the base station providing cellular radio
+      coverage in 5G NR.
+  - term: RAN
+    definition: Radio Access Network, the radio infrastructure connecting user devices
+      to the core network.
+  - term: 5G Core
+    definition: The heart of the 5G system handling authentication, session routing,
+      mobility, and policy management.
+  - term: eMBB
+    definition: Enhanced Mobile Broadband, offering multi-gigabit data throughput
+      for high-bandwidth user experiences.
+  - term: URLLC
+    definition: Ultra-Reliable Low-Latency Communication, delivering guaranteed sub-millisecond
+      latencies for mission-critical tasks.
+  - term: mMTC
+    definition: Massive Machine-Type Communications, supporting millions of connected
+      low-power IoT sensors per square kilometer.
+  - term: Network Slicing
+    definition: Virtual multiplexing that divides a single physical network into
+      isolated virtual pipes tailored for specific applications.
+  - term: mmWave
+    definition: Millimeter Wave frequencies (24 GHz to 100 GHz), providing super-wide
+      bandwidth at shorter propagation distances.
+  - term: Sub-6
+    definition: Mid-band and low-band frequencies below 6 GHz, offering balanced
+      wide-area coverage and high speeds.
+  - term: Massive MIMO
+    definition: Multiple-Input Multiple-Output using dozens of antenna elements to
+      serve many users simultaneously.
+  - term: Beamforming
+    definition: Signal processing technique concentrating radio waves into directed
+      beams pointed toward specific users.
+  - term: Latency
+    definition: The round-trip time required for a packet of data to travel from
+      sender to receiver and back.
+  - term: Throughput
+    definition: The actual volume of data successfully transmitted over a network
+      channel in a given time interval.
+  - term: Fronthaul
+    definition: The high-bandwidth fiber link connecting radio antenna heads (RRUs)
+      to the centralized baseband pool (BBU).
+  - term: Backhaul
+    definition: The network connection linking the local base station or edge facility
+      back to the central core network.
+  - term: BBU
+    definition: Baseband Unit, digital hardware that processes baseband telecom signals
+      before radio transmission.
+  - term: Edge Computing
+    definition: Executing cloud compute workloads locally near data sources to minimize
+      latency and bandwidth consumption.
+  - term: SNR
+    definition: Signal-to-Noise Ratio, the ratio of desired signal power to background
+      electromagnetic noise power.
+  - term: RBW
+    definition: Resolution Bandwidth, the frequency bandwidth of the analysis filter
+      in a spectrum analyzer.
+  - term: Interference
+    definition: Unwanted electromagnetic energy disrupting or degrading desired radio
+      frequency communications.
