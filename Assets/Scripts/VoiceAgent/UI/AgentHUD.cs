@@ -120,8 +120,19 @@ namespace FiveGLab.VoiceAgent
             // Animate mic level meter during Listening
             if (levelMeterBar != null && micCapture != null && micCapture.IsRecording)
             {
-                float rms = Mathf.Clamp01(micCapture.CurrentRms * 14f);
-                levelMeterBar.fillAmount = Mathf.Lerp(levelMeterBar.fillAmount, Mathf.Max(0.08f, rms), Time.deltaTime * 18f);
+                float rms = Mathf.Clamp01(micCapture.CurrentRms * 20f);
+                if (micCapture.CurrentRms < 0.0004f)
+                {
+                    // No voice detected yet (silence)
+                    levelMeterBar.color = new Color(0.95f, 0.35f, 0.25f, 0.8f); // Red alert
+                    levelMeterBar.fillAmount = 0.04f;
+                }
+                else
+                {
+                    // Voice detected!
+                    levelMeterBar.color = new Color(0f, 0.95f, 0.45f, 1f); // Bright Green
+                    levelMeterBar.fillAmount = Mathf.Lerp(levelMeterBar.fillAmount, Mathf.Max(0.12f, rms), Time.deltaTime * 20f);
+                }
             }
             else if (levelMeterBar != null && levelMeterBar.fillAmount > 0.01f)
             {

@@ -183,7 +183,9 @@ namespace FiveGLab.VoiceAgent
 
                 if (string.IsNullOrWhiteSpace(transcript))
                 {
-                    if (hud != null) hud.ShowSubtitle("I could not hear that clearly, please try again.");
+                    var mic = GetComponentInChildren<MicrophoneCapture>();
+                    string micName = mic != null ? mic.GetFriendlyDeviceName() : "Mic";
+                    if (hud != null) hud.ShowSubtitle($"<color=#FF9800>I couldn't hear any voice on <b>{micName}</b>. Speak louder or press [M] to switch mic!</color>");
                     SetState(AgentState.Idle);
                     return;
                 }

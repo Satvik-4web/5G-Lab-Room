@@ -93,9 +93,12 @@ namespace FiveGLab.VoiceAgent
         public string GetFriendlyDeviceName()
         {
             if (string.IsNullOrEmpty(micDevice)) return "No Mic";
+            if (micDevice.IndexOf("AirBass", StringComparison.OrdinalIgnoreCase) >= 0) return "AirBass Earbuds";
             if (micDevice.IndexOf("Master Buds", StringComparison.OrdinalIgnoreCase) >= 0) return "Master Buds";
+            if (micDevice.IndexOf("Buds", StringComparison.OrdinalIgnoreCase) >= 0 || micDevice.IndexOf("Earbuds", StringComparison.OrdinalIgnoreCase) >= 0) return "Earbuds";
             if (micDevice.IndexOf("Realtek", StringComparison.OrdinalIgnoreCase) >= 0) return "Laptop Mic (Realtek)";
             if (micDevice.IndexOf("Array", StringComparison.OrdinalIgnoreCase) >= 0) return "Mic Array";
+            if (micDevice.IndexOf("Headset", StringComparison.OrdinalIgnoreCase) >= 0) return "Headset Mic";
             if (micDevice.Length > 20) return micDevice.Substring(0, 20) + "...";
             return micDevice;
         }
@@ -209,9 +212,12 @@ namespace FiveGLab.VoiceAgent
                 if (abs > maxPeak) maxPeak = abs;
             }
 
-            if (maxPeak > 0.003f && maxPeak < 0.70f)
+            Debug.Log($"[MicrophoneCapture] Captured {rawSamples.Length} samples from '{micDevice}'. Max peak: {maxPeak:F5}");
+
+            if (maxPeak > 0.0002f && maxPeak < 0.70f)
             {
-                float gain = Mathf.Min(0.85f / maxPeak, 12f);
+                float gain = Mathf.Min(0.85f / maxPeak, 60f);
+                Debug.Log($"[MicrophoneCapture] Normalizing audio with gain boost: {gain:F1}x");
                 for (int i = 0; i < rawSamples.Length; i++)
                 {
                     rawSamples[i] = Mathf.Clamp(rawSamples[i] * gain, -1f, 1f);
