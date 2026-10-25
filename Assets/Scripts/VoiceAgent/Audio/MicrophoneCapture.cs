@@ -214,9 +214,9 @@ namespace FiveGLab.VoiceAgent
 
             Debug.Log($"[MicrophoneCapture] Captured {rawSamples.Length} samples from '{micDevice}'. Max peak: {maxPeak:F5}");
 
-            if (maxPeak > 0.0002f && maxPeak < 0.70f)
+            if (maxPeak > 0.00005f && maxPeak < 0.70f)
             {
-                float gain = Mathf.Min(0.85f / maxPeak, 60f);
+                float gain = Mathf.Min(0.85f / maxPeak, 80f);
                 Debug.Log($"[MicrophoneCapture] Normalizing audio with gain boost: {gain:F1}x");
                 for (int i = 0; i < rawSamples.Length; i++)
                 {

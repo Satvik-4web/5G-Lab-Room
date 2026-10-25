@@ -23,6 +23,7 @@ namespace FiveGLab.VoiceAgent
 
         private MicrophoneCapture micCapture;
         private Coroutine subtitleFadeRoutine;
+        private string activeUserQuery = "";
 
         private void Awake()
         {
@@ -89,18 +90,44 @@ namespace FiveGLab.VoiceAgent
             }
         }
 
+        public void SetUserQuery(string query)
+        {
+            activeUserQuery = query;
+            if (subtitleText != null)
+            {
+                subtitleText.text = $"<color=#8AB4F8><b>You:</b> \"{query}\"</color>\n<color=#B0BEC5><i>Aria is thinking...</i></color>";
+            }
+            if (subtitleFadeRoutine != null) StopCoroutine(subtitleFadeRoutine);
+            subtitleFadeRoutine = StartCoroutine(ClearSubtitleAfterDelay(15f));
+        }
+
         public void ShowSubtitle(string text)
         {
             if (subtitleText == null) return;
 
-            subtitleText.text = text;
+            if (!string.IsNullOrEmpty(activeUserQuery))
+            {
+                subtitleText.text = $"<color=#8AB4F8><b>You:</b> \"{activeUserQuery}\"</color>\n<color=#FFFFFF><b>Aria:</b> {text}</color>";
+            }
+            else
+            {
+                subtitleText.text = text;
+            }
+
             if (subtitleFadeRoutine != null) StopCoroutine(subtitleFadeRoutine);
-            subtitleFadeRoutine = StartCoroutine(ClearSubtitleAfterDelay(8f));
+            subtitleFadeRoutine = StartCoroutine(ClearSubtitleAfterDelay(15f));
+        }
+
+        public void ClearDialogue()
+        {
+            activeUserQuery = "";
+            if (subtitleText != null) subtitleText.text = "";
         }
 
         private IEnumerator ClearSubtitleAfterDelay(float delay)
         {
             yield return new WaitForSeconds(delay);
+            activeUserQuery = "";
             if (subtitleText != null) subtitleText.text = "";
         }
 
@@ -159,14 +186,14 @@ namespace FiveGLab.VoiceAgent
                 hudRoot = new GameObject("HUD_Root");
                 hudRoot.transform.SetParent(canvas.transform, false);
                 var rect = hudRoot.AddComponent<RectTransform>();
-                rect.sizeDelta = new Vector2(620, 120);
+                rect.sizeDelta = new Vector2(640, 140);
                 rect.localScale = Vector3.one * 0.0016f;
 
-                // Background Panel (#1A1A1A at 88% opacity)
+                // Background Panel (#1A1A1A at 90% opacity)
                 var bgGO = new GameObject("Background");
                 bgGO.transform.SetParent(hudRoot.transform, false);
                 backgroundImage = bgGO.AddComponent<Image>();
-                backgroundImage.color = new Color(0.1f, 0.1f, 0.1f, 0.88f);
+                backgroundImage.color = new Color(0.08f, 0.08f, 0.08f, 0.90f);
                 var bgRect = bgGO.GetComponent<RectTransform>();
                 bgRect.anchorMin = Vector2.zero;
                 bgRect.anchorMax = Vector2.one;
@@ -195,23 +222,23 @@ namespace FiveGLab.VoiceAgent
                 statusText.alignment = TextAlignmentOptions.MidlineLeft;
                 statusText.text = "ARIA";
                 var statusRect = statusGO.GetComponent<RectTransform>();
-                statusRect.anchorMin = new Vector2(0, 0.65f);
-                statusRect.anchorMax = new Vector2(1, 0.95f);
+                statusRect.anchorMin = new Vector2(0, 0.72f);
+                statusRect.anchorMax = new Vector2(1, 0.96f);
                 statusRect.offsetMin = new Vector2(16, 0);
                 statusRect.offsetMax = new Vector2(-16, 0);
 
-                // Subtitle text
+                // Subtitle text (Supports multi-line user question + Aria reply)
                 var subGO = new GameObject("SubtitleText");
                 subGO.transform.SetParent(hudRoot.transform, false);
                 subtitleText = subGO.AddComponent<TextMeshProUGUI>();
-                subtitleText.fontSize = 15;
-                subtitleText.color = new Color(0.92f, 0.92f, 0.92f, 1f); // Off-white #E0E0E0
+                subtitleText.fontSize = 14;
+                subtitleText.color = new Color(0.94f, 0.94f, 0.94f, 1f); // Off-white #F0F0F0
                 subtitleText.textWrappingMode = TextWrappingModes.Normal;
                 subtitleText.alignment = TextAlignmentOptions.TopLeft;
                 subtitleText.text = "";
                 var subRect = subGO.GetComponent<RectTransform>();
-                subRect.anchorMin = new Vector2(0, 0.08f);
-                subRect.anchorMax = new Vector2(1, 0.65f);
+                subRect.anchorMin = new Vector2(0, 0.06f);
+                subRect.anchorMax = new Vector2(1, 0.72f);
                 subRect.offsetMin = new Vector2(16, 0);
                 subRect.offsetMax = new Vector2(-16, 0);
             }

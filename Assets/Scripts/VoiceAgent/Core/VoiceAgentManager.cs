@@ -167,7 +167,9 @@ namespace FiveGLab.VoiceAgent
             CancelInFlightOperations();
             activeCts = new CancellationTokenSource();
 
-            await ProcessTextQueryAsync(typedText.Trim(), activeCts.Token);
+            string clean = typedText.Trim();
+            if (hud != null) hud.SetUserQuery(clean);
+            await ProcessTextQueryAsync(clean, activeCts.Token);
         }
 
         private async Task ProcessVoiceInputAsync(byte[] wavData)
@@ -191,7 +193,7 @@ namespace FiveGLab.VoiceAgent
                 }
 
                 if (config.debugLogging) Debug.Log($"[VoiceAgentManager] Transcribed: \"{transcript}\"");
-                if (hud != null) hud.ShowSubtitle($"<color=#8AB4F8><b>You:</b> \"{transcript}\"</color>");
+                if (hud != null) hud.SetUserQuery(transcript);
                 await ProcessTextQueryAsync(transcript, ct);
             }
             catch (OperationCanceledException)

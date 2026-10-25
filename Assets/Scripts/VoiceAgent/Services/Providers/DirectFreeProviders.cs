@@ -93,25 +93,25 @@ namespace FiveGLab.VoiceAgent
             // Execute Equipment Zoom & Inspection Tools
             if (isSpectrum && isNavIntent)
             {
-                response.textContent = ""; 
+                response.textContent = "Taking you to the RF Spectrum Analyzer for a closer look."; 
                 response.toolCalls.Add(new ToolCallRequest { id = "call_spec", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"spectrum\"}" });
                 return response;
             }
             if (isMec && isNavIntent)
             {
-                response.textContent = ""; 
+                response.textContent = "Zooming in on the MEC Core edge server rack."; 
                 response.toolCalls.Add(new ToolCallRequest { id = "call_mec", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"mec\"}" });
                 return response;
             }
             if (isGnodeb && isNavIntent)
             {
-                response.textContent = ""; 
+                response.textContent = "Here is the gNodeB base station antenna."; 
                 response.toolCalls.Add(new ToolCallRequest { id = "call_ant", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"gnodeb\"}" });
                 return response;
             }
             if (isExit)
             {
-                response.textContent = "";
+                response.textContent = "Returning to the lab room overview.";
                 response.toolCalls.Add(new ToolCallRequest { id = "call_exit", toolName = "exit_inspection", argumentsJson = "{}" });
                 return response;
             }
@@ -125,51 +125,7 @@ namespace FiveGLab.VoiceAgent
                 return response;
             }
 
-            // 3. Optional: Fast Attempt at Cloud AI for unexpected general queries (3s timeout)
-            try
-            {
-                string prompt = $"You are Aria, an interactive voice tutor in a 5G Virtual Reality Lab. Answer in 2 short, spoken sentences without markdown or bullets.\nLearner asked: {userQuery}";
-                var payloadObj = new PollinationsPayload
-                {
-                    messages = new List<PollinationsMessage>
-                    {
-                        new PollinationsMessage { role = "user", content = prompt }
-                    }
-                };
-
-                string jsonBody = JsonUtility.ToJson(payloadObj);
-                byte[] bodyBytes = Encoding.UTF8.GetBytes(jsonBody);
-
-                using var req = new UnityWebRequest("https://text.pollinations.ai/", "POST");
-                req.uploadHandler = new UploadHandlerRaw(bodyBytes);
-                req.downloadHandler = new DownloadHandlerBuffer();
-                req.SetRequestHeader("Content-Type", "application/json");
-                req.SetRequestHeader("User-Agent", "Mozilla/5.0");
-                req.timeout = 3; // Fast timeout so user never waits
-
-                var op = req.SendWebRequest();
-                while (!op.isDone)
-                {
-                    if (ct.IsCancellationRequested) { req.Abort(); ct.ThrowIfCancellationRequested(); }
-                    await Task.Yield();
-                }
-
-                if (req.result == UnityWebRequest.Result.Success && !string.IsNullOrWhiteSpace(req.downloadHandler.text))
-                {
-                    string answer = req.downloadHandler.text.Trim();
-                    if (answer.StartsWith("Aria:", StringComparison.OrdinalIgnoreCase)) answer = answer.Substring(5).Trim();
-                    answer = Regex.Replace(answer, @"[\*#`_>\[\]]", "").Trim();
-                    if (!string.IsNullOrWhiteSpace(answer) && !answer.Contains("<!DOCTYPE html>") && !answer.Contains("limit reached"))
-                    {
-                        response.textContent = answer;
-                        onTokenChunk?.Invoke(answer);
-                        return response;
-                    }
-                }
-            }
-            catch { }
-
-            // 4. Contextual Fallback based on Current Equipment Selection
+            // 3. Contextual Fallback based on Current Equipment Selection
             if (LabContext.CurrentInspected != EquipmentId.None)
             {
                 var data = knowledge?.GetEquipment(LabContext.CurrentInspected);
@@ -182,7 +138,7 @@ namespace FiveGLab.VoiceAgent
             }
             else
             {
-                response.textContent = "I am Aria, your 5G lab tutor! You can ask me about beamforming, massive MIMO, the MEC core server rack, or the RF spectrum analyzer.";
+                response.textContent = "The core basics of 5G rely on three pillars: the gNodeB base station for beamforming, the MEC server rack for sub-millisecond edge latency, and the Spectrum Analyzer for clean RF frequencies. Which would you like to explore?";
             }
 
             onTokenChunk?.Invoke(response.textContent);
@@ -191,92 +147,149 @@ namespace FiveGLab.VoiceAgent
 
         private string MatchSemantic5GKnowledge(string q)
         {
-            // Greetings / Identity
-            if (q.Contains("hello") || q.Contains("hi") || q.Contains("hey") || q.Contains("who are you") || q.Contains("your name") || q.Contains("kaun ho") || q.Contains("kya naam"))
+            if (string.IsNullOrWhiteSpace(q)) return null;
+
+            // Pad with spaces for safe word boundary checking
+            q = " " + q.ToLowerInvariant().Trim() + " ";
+
+            // 1. Greetings & Identity
+            if (q.Contains("hello") || q.Contains("hi ") || q.Contains("hey") || q.Contains("who are you") || 
+                q.Contains("your name") || q.Contains("kaun ho") || q.Contains("kya naam") || q.Contains("namaste") ||
+                q.Contains("about yourself") || q.Contains("introduce"))
             {
                 return "Hello! I am Aria, your 5G VR Lab voice tutor. You can ask me about any equipment in the room, or explore concepts like beamforming, latency, and massive MIMO.";
             }
 
-            // What is 5G / Overview / How it works
-            if (q.Contains("what is 5g") || q.Contains("how does 5g work") || q.Contains("5g kya hai") || q.Contains("5g kya hota") || q.Contains("about 5g") || q.Contains("5g overview"))
+            // 2. Help / Instructions
+            if (q.Contains("help") || q.Contains("what can i ask") || q.Contains("madad") || 
+                q.Contains("kya kar sakte") || q.Contains("commands") || q.Contains("how to use"))
             {
-                return "5G is the fifth generation mobile network delivering multi-gigabit data speeds, ultra-low latency under one millisecond, and massive device connectivity. It unites advanced radio antennas, edge compute, and high-frequency spectrum.";
+                return "You can hold [V] to ask any 5G doubt, press [1] for the guided tour, press [2] to inspect the spectrum analyzer, [3] for the MEC rack, or [4] for the gNodeB antenna!";
             }
 
-            // Beamforming
-            if (q.Contains("beamform") || q.Contains("beam forming") || q.Contains("focus") || q.Contains("spotlight") || q.Contains("target beam") || q.Contains("direct waves"))
+            // 3. Beamforming (Priority before generic antennas)
+            if (q.Contains("beamform") || q.Contains("beam forming") || q.Contains("spotlight") || 
+                q.Contains("target beam") || q.Contains("direct waves") || q.Contains("shape wave") ||
+                q.Contains("directional"))
             {
                 return "Active beamforming uses multiple antenna elements to shape and focus radio waves directly toward user devices like a spotlight. This drastically cuts down interference, conserves transmission energy, and boosts data speeds.";
             }
 
-            // Massive MIMO
-            if (q.Contains("mimo") || q.Contains("multiple input") || q.Contains("spatial multiplexing") || q.Contains("antenna array"))
+            // 4. Massive MIMO
+            if (q.Contains("mimo") || q.Contains("multiple input") || q.Contains("spatial multiplexing") || 
+                q.Contains("antenna array") || q.Contains("arrays") || q.Contains("streams"))
             {
                 return "Massive MIMO equips the base station with dozens of antenna elements that transmit and receive multiple data streams simultaneously. This multiplies network capacity so hundreds of devices can connect at once without slowdowns.";
             }
 
-            // gNodeB / Base Station / Antenna
-            if (q.Contains("gnodeb") || q.Contains("base station") || q.Contains("antenna") || q.Contains("tower") || q.Contains("radio link") || q.Contains("radio access"))
-            {
-                return "The gNodeB is our 5G base station, connecting mobile devices to the core network over 5G New Radio. It handles the physical radio link using Massive MIMO and active beamforming across Sub-6 and millimeter wave bands.";
-            }
-
-            // Latency / 1 ms / Delay / URLLC
-            if (q.Contains("latency") || q.Contains("1 ms") || q.Contains("1ms") || q.Contains("delay") || q.Contains("lag") || q.Contains("ping") || q.Contains("urllc") || q.Contains("millisecond") || q.Contains("real time"))
+            // 5. Latency / 1ms / Delay / URLLC / Real-time
+            if (q.Contains("latency") || q.Contains("1 ms") || q.Contains("1ms") || q.Contains("delay") || 
+                q.Contains("lag") || q.Contains("ping") || q.Contains("urllc") || q.Contains("millisecond") || 
+                q.Contains("real time") || q.Contains("low latency"))
             {
                 return "Under one millisecond latency is achieved by processing data locally at the MEC server rack. This near-instant response time is crucial for time-critical applications like autonomous cars, remote robotic surgery, and VR gaming.";
             }
 
-            // MEC / Edge Computing / Server Rack / BBU
-            if (q.Contains("mec") || q.Contains("edge compute") || q.Contains("edge computing") || q.Contains("server rack") || q.Contains("bbu") || q.Contains("baseband") || q.Contains("black box") || q.Contains("server"))
+            // 6. MEC / Edge Computing / Server Rack / BBU
+            if (q.Contains("mec") || q.Contains("edge compute") || q.Contains("edge computing") || 
+                q.Contains("server rack") || q.Contains("server") || q.Contains("rack") || 
+                q.Contains("bbu") || q.Contains("baseband") || q.Contains("black box") || q.Contains("edge"))
             {
                 return "Mobile Edge Computing, or MEC, places powerful GPU and Baseband servers right next to the cell tower instead of far away in the cloud. This enables instant data processing right where the action happens.";
             }
 
-            // RF Spectrum Analyzer / Measurement
-            if (q.Contains("spectrum analyzer") || q.Contains("spectrum") || q.Contains("analyzer") || q.Contains("rf") || q.Contains("interference") || q.Contains("hunting") || q.Contains("measure") || q.Contains("diagnostic"))
+            // 7. Spectrum Analyzer / RF Measurement / Hunting / Interference
+            if (q.Contains("spectrum") || q.Contains("soectrum") || q.Contains("spectram") || 
+                q.Contains("analyzer") || q.Contains("analyser") || q.Contains("rf") || 
+                q.Contains("interference") || q.Contains("hunting") || q.Contains("dbm") || 
+                q.Contains("noise floor") || q.Contains("frequency meter") || q.Contains("spectral"))
             {
                 return "The RF Spectrum Analyzer measures signal power across frequencies from two hertz all the way up to eighty-five gigahertz. Telecom engineers use it to verify clean signal transmission and hunt down unwanted radio interference.";
             }
 
-            // Resolution Bandwidth (RBW)
-            if (q.Contains("rbw") || q.Contains("resolution bandwidth") || q.Contains("filter bandwidth") || q.Contains("bandwidth"))
+            // 8. Resolution Bandwidth (RBW)
+            if (q.Contains("rbw") || q.Contains("resolution bandwidth") || q.Contains("filter bandwidth") || 
+                q.Contains("filter width"))
             {
                 return "Resolution bandwidth, or RBW, defines the frequency filter width used by the analyzer to separate signals. A narrower RBW reveals fine spectral details and lowers the displayed noise floor.";
             }
 
-            // mmWave vs Sub-6 GHz
-            if (q.Contains("mmwave") || q.Contains("millimeter wave") || q.Contains("sub-6") || q.Contains("sub 6") || q.Contains("frequency") || q.Contains("ghz") || q.Contains("hertz") || q.Contains("bands"))
+            // 9. gNodeB / Base Station / Antenna Tower
+            if (q.Contains("gnodeb") || q.Contains("nodeb") || q.Contains("base station") || 
+                q.Contains("antenna") || q.Contains("antena") || q.Contains("cell tower") || 
+                q.Contains("tower") || q.Contains("radio link") || q.Contains("mast") || 
+                q.Contains("radio unit") || q.Contains("rrh") || q.Contains("ru"))
+            {
+                return "The gNodeB is our 5G base station, connecting mobile devices to the core network over 5G New Radio. It handles active beamforming and Massive MIMO across Sub-6 and millimeter wave bands to serve hundreds of devices simultaneously.";
+            }
+
+            // 10. mmWave vs Sub-6 GHz / Frequency Bands
+            if (q.Contains("mmwave") || q.Contains("millimeter wave") || q.Contains("sub-6") || 
+                q.Contains("sub 6") || q.Contains("frequency") || q.Contains("frequencies") || 
+                q.Contains("ghz") || q.Contains("hertz") || q.Contains("bands") || q.Contains("c-band"))
             {
                 return "5G utilizes Sub-6 gigahertz for broad coverage that penetrates walls easily, and millimeter wave above twenty-four gigahertz for blistering multi-gigabit speeds over shorter distances.";
             }
 
-            // 5G NR / Meaning of g / NR
-            if (q.Contains("5g nr") || q.Contains("new radio") || q.Contains("nr stand for") || q.Contains("g stand for") || q.Contains("what does nr mean") || q.Contains("next generation"))
+            // 11. 5G NR / Meaning of g / 3GPP
+            if (q.Contains("nr") || q.Contains("new radio") || q.Contains("g stand for") || 
+                q.Contains("g ka matlab") || q.Contains("3gpp") || q.Contains("standard"))
             {
                 return "5G NR stands for 5G New Radio, the global wireless standard designed for higher speeds, lower latency, and massive device connectivity. The 'g' in gNodeB stands for next-generation NodeB.";
             }
 
-            // Network Slicing
-            if (q.Contains("slice") || q.Contains("slicing") || q.Contains("virtual network"))
+            // 12. Network Slicing
+            if (q.Contains("slice") || q.Contains("slicing") || q.Contains("virtual network") || q.Contains("partition"))
             {
                 return "Network slicing allows operators to divide a single physical 5G network into multiple virtual, end-to-end networks customized for specific needs, such as autonomous vehicles or smart energy grids.";
             }
 
-            // 5G vs 4G / Differences
-            if (q.Contains("4g") || q.Contains("difference") || q.Contains("better than 4g") || q.Contains("upgrade from 4g") || q.Contains("vs"))
+            // 13. 5G vs 4G / Differences / Speed comparison
+            if (q.Contains("4g") || q.Contains("lte") || q.Contains("difference") || 
+                q.Contains("better than 4g") || q.Contains("upgrade from 4g") || q.Contains("vs"))
             {
                 return "Compared to 4G LTE, 5G offers up to one hundred times higher data rates, ten times lower latency down to one millisecond, and supports one million devices per square kilometer.";
             }
 
-            // Use cases / Applications
-            if (q.Contains("use case") || q.Contains("application") || q.Contains("why do we need") || q.Contains("autonomous") || q.Contains("healthcare") || q.Contains("smart city") || q.Contains("iot"))
+            // 14. Use cases / Applications / Why 5G / IoT / Autonomous
+            if (q.Contains("use case") || q.Contains("application") || q.Contains("why do we need") || 
+                q.Contains("why 5g") || q.Contains("autonomous") || q.Contains("healthcare") || 
+                q.Contains("surgery") || q.Contains("smart city") || q.Contains("iot") || q.Contains("future"))
             {
                 return "5G empowers three major pillars: Enhanced Mobile Broadband for fast downloads, Ultra-Reliable Low Latency for remote surgery and autonomous driving, and Massive Machine-Type Communications for smart cities and IoT.";
             }
 
-            // "Explain this" / "What am I looking at" / "Ye kya hai"
-            if (q.Contains("explain this") || q.Contains("what is this") || q.Contains("what am i looking at") || q.Contains("tell me about this") || q.Contains("ye kya hai") || q.Contains("kya hai ye") || q.Contains("btao") || q.Contains("explain"))
+            // 15. 5G Core Basics / Fundamentals / Overview / What is 5G
+            // Catches: "what are the core basics of 5G", "basics of 5g", "5g fundamentals", "how does 5g work", "explain 5g"
+            bool has5GTerm = q.Contains("5g") || q.Contains("five g") || q.Contains("network");
+            bool hasBasicsTerm = q.Contains("basic") || q.Contains("core") || q.Contains("fundamental") || 
+                                 q.Contains("pillar") || q.Contains("concept") || q.Contains("start") || 
+                                 q.Contains("work") || q.Contains("overview") || q.Contains("what is") || 
+                                 q.Contains("tell me") || q.Contains("explain") || q.Contains("learn") || 
+                                 q.Contains("shuru") || q.Contains("kya hai") || q.Contains("kya hota") || 
+                                 q.Contains("samjhao");
+
+            if (has5GTerm && hasBasicsTerm)
+            {
+                return "The core basics of 5G rely on three main pillars: the gNodeB base station using Massive MIMO and beamforming for ultra-fast wireless, the MEC Core edge server delivering under one millisecond latency, and the Spectrum Analyzer ensuring clean RF transmission.";
+            }
+
+            // If user just asks "basics", "core", "where to start", etc. without saying 5g explicitly
+            if (q.Contains("basic") || q.Contains("core") || q.Contains("fundamental") || q.Contains("where to start") || q.Contains("shuruat"))
+            {
+                return "The core basics of 5G rely on three main pillars: the gNodeB base station using Massive MIMO and beamforming for ultra-fast wireless, the MEC Core edge server delivering under one millisecond latency, and the Spectrum Analyzer ensuring clean RF transmission.";
+            }
+
+            // 16. How they connect / Work together / Data flow
+            if (q.Contains("together") || q.Contains("connect") || q.Contains("flow") || q.Contains("diagram") || q.Contains("system") || q.Contains("kaise juda"))
+            {
+                return "In this lab, the gNodeB base station catches the radio signal from user devices, the MEC server rack processes computations instantly in under one millisecond, and the Spectrum Analyzer confirms clean signal frequencies without interference.";
+            }
+
+            // 17. Contextual Inspection ("Explain this" / "What am I looking at" / "Ye kya hai")
+            if (q.Contains("explain this") || q.Contains("what is this") || q.Contains("what am i looking at") || 
+                q.Contains("tell me about this") || q.Contains("ye kya hai") || q.Contains("kya hai ye") || 
+                q.Contains("btao") || q.Contains("explain") || q.Contains("kya dikh raha"))
             {
                 if (LabContext.CurrentInspected == EquipmentId.gnodeb || LabContext.CurrentHovered == EquipmentId.gnodeb)
                 {
@@ -293,7 +306,27 @@ namespace FiveGLab.VoiceAgent
                 return "You can click on the gNodeB antenna, the MEC server rack, or the Spectrum Analyzer, and I will explain how each component powers the 5G network!";
             }
 
-            return null;
+            // 18. Smart Dynamic Contextual Fallbacks (Never repeat the static intro!)
+            if (LabContext.CurrentInspected != EquipmentId.None)
+            {
+                var data = knowledge?.GetEquipment(LabContext.CurrentInspected);
+                return $"You are inspecting the {data?.displayName}. {data?.oneLiner} Feel free to ask about its frequency, latency, or role in 5G!";
+            }
+            if (LabContext.CurrentHovered != EquipmentId.None)
+            {
+                var data = knowledge?.GetEquipment(LabContext.CurrentHovered);
+                return $"That device is the {data?.displayName}. {data?.oneLiner}";
+            }
+
+            // Rotate through friendly, helpful educational responses instead of repeating the same canned text!
+            string[] smartFallbacks = new string[]
+            {
+                "In 5G, the gNodeB antenna handles beamforming, the MEC server processes data in under one millisecond, and the Spectrum Analyzer guards signal quality. Which one would you like to explore?",
+                "Every part of this lab demonstrates a 5G breakthrough: Massive MIMO at the tower, sub-millisecond MEC edge computing, and RF spectrum analysis. Say 'take me to the spectrum analyzer' or 'show MEC' to inspect them!",
+                "You can ask me about beamforming, 1-millisecond latency, massive MIMO, or press [1] to start the full guided tour!"
+            };
+            int fallbackIndex = Mathf.Abs(q.GetHashCode()) % smartFallbacks.Length;
+            return smartFallbacks[fallbackIndex];
         }
     }
 
@@ -430,12 +463,16 @@ namespace FiveGLab.VoiceAgent
                     if (proc != null)
                     {
                         var readTask = proc.StandardOutput.ReadToEndAsync();
+                        var errTask = proc.StandardError.ReadToEndAsync();
+                        float watchdogTimeout = Time.realtimeSinceStartup + 6.0f;
+
                         while (!proc.HasExited)
                         {
-                            if (ct.IsCancellationRequested)
+                            if (ct.IsCancellationRequested || Time.realtimeSinceStartup > watchdogTimeout)
                             {
                                 try { proc.Kill(); } catch { }
-                                ct.ThrowIfCancellationRequested();
+                                if (ct.IsCancellationRequested) ct.ThrowIfCancellationRequested();
+                                break;
                             }
                             await Task.Yield();
                         }

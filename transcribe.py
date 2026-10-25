@@ -31,7 +31,16 @@ try:
     except Exception:
         pass
 
-    # 3. Try Hindi (hi-IN) if user asked in Hindi
+    # 3. Try British English (en-GB)
+    try:
+        text = r.recognize_google(audio, language="en-GB")
+        if text and len(text.strip()) > 0:
+            print(text.strip())
+            sys.exit(0)
+    except Exception:
+        pass
+
+    # 4. Try Hindi (hi-IN) if user asked in Hindi
     try:
         text = r.recognize_google(audio, language="hi-IN")
         if text and len(text.strip()) > 0:
