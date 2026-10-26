@@ -66,3 +66,7 @@ crashlytics-build.properties
 
 # Packed macos application to extract from macos build
 *.app.zip
+
+# Unity recovery scenes
+Assets/_Recovery/
+
