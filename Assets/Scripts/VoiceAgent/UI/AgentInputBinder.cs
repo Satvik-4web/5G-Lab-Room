@@ -49,6 +49,19 @@ namespace FiveGLab.VoiceAgent
                 isUIMinimized = !isUIMinimized;
             }
 
+            // Exit Inspection with Escape or X key
+            bool escPressed = false;
+            if (Keyboard.current != null && (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.xKey.wasPressedThisFrame)) escPressed = true;
+            try { if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.X)) escPressed = true; } catch { }
+
+            if (escPressed && !isTypingOpen)
+            {
+                if (LabContext.CurrentInspected != EquipmentId.None)
+                {
+                    PCInteractionTester.ExitCurrentInspection();
+                }
+            }
+
             // Toggle Typed Input with 'T'
             bool tPressed = false;
             if (Keyboard.current != null && Keyboard.current.tKey.wasPressedThisFrame) tPressed = true;
@@ -248,9 +261,11 @@ namespace FiveGLab.VoiceAgent
             if (isUIMinimized)
             {
                 // Sleek Minimalist Floating Pill in top-left
-                GUILayout.BeginArea(new Rect(15, 15, 240, 36));
+                bool isInspecting = LabContext.CurrentInspected != EquipmentId.None;
+                float pillWidth = isInspecting ? 340 : 240;
+                GUILayout.BeginArea(new Rect(15, 15, pillWidth, 36));
                 GUI.color = new Color(0.06f, 0.09f, 0.14f, 0.92f);
-                GUI.Box(new Rect(0, 0, 240, 36), GUIContent.none);
+                GUI.Box(new Rect(0, 0, pillWidth, 36), GUIContent.none);
                 GUI.color = Color.white;
 
                 GUILayout.BeginHorizontal();
@@ -259,7 +274,14 @@ namespace FiveGLab.VoiceAgent
                 {
                     isUIMinimized = false;
                 }
-                if (GUILayout.Button("[+] Show [H]", GUILayout.Width(80), GUILayout.Height(28)))
+                if (isInspecting)
+                {
+                    if (GUILayout.Button("↩️ Exit [Esc]", GUILayout.Width(90), GUILayout.Height(28)))
+                    {
+                        PCInteractionTester.ExitCurrentInspection();
+                    }
+                }
+                if (GUILayout.Button("[+] Show [H]", GUILayout.Width(75), GUILayout.Height(28)))
                 {
                     isUIMinimized = false;
                 }
@@ -281,6 +303,13 @@ namespace FiveGLab.VoiceAgent
                     ? "<color=#00E676><b>● RECORDING... (V TO STOP)</b></color>"
                     : "<color=#00E5FF><b>● ARIA 5G VOICE TUTOR</b></color> <color=#94A3B8>[Hold V to Talk]</color>";
                 GUILayout.Label(micStatus, GetRichStyle(), GUILayout.ExpandWidth(true));
+                if (LabContext.CurrentInspected != EquipmentId.None)
+                {
+                    if (GUILayout.Button("↩️ Exit Zoom [Esc]", GUILayout.Width(125), GUILayout.Height(22)))
+                    {
+                        PCInteractionTester.ExitCurrentInspection();
+                    }
+                }
                 if (GUILayout.Button("[—] Hide [H]", GUILayout.Width(80), GUILayout.Height(22)))
                 {
                     isUIMinimized = true;

@@ -8,8 +8,11 @@ using FiveGLab.VoiceAgent;
 [RequireComponent(typeof(Collider))]
 public class PCInteractionTester : MonoBehaviour
 {
-    private static readonly Dictionary<EquipmentId, PCInteractionTester> Instances = new Dictionary<EquipmentId, PCInteractionTester>();
+    public static readonly Dictionary<EquipmentId, PCInteractionTester> Instances = new Dictionary<EquipmentId, PCInteractionTester>();
     private static PCInteractionTester currentZoomedInstance = null;
+    private static Vector3 defaultOriginPos;
+    private static Quaternion defaultOriginRot;
+    private static bool hasSavedDefaultOrigin = false;
 
     private InteractableLabel interactableLabel;
     private AudioSource audioSource;
@@ -51,7 +54,16 @@ public class PCInteractionTester : MonoBehaviour
         xrInteractable = GetComponent<XRSimpleInteractable>();
         
         GameObject originGO = GameObject.Find("XR Origin (VR)");
-        if (originGO != null) xrOrigin = originGO.transform;
+        if (originGO != null)
+        {
+            xrOrigin = originGO.transform;
+            if (!hasSavedDefaultOrigin)
+            {
+                defaultOriginPos = xrOrigin.position;
+                defaultOriginRot = xrOrigin.rotation;
+                hasSavedDefaultOrigin = true;
+            }
+        }
 
         if (xrInteractable != null)
         {
@@ -81,6 +93,7 @@ public class PCInteractionTester : MonoBehaviour
         {
             PopupUIManager.Instance.ShowPopup(interactableLabel.objectName, interactableLabel.objectDescription, transform);
             isHovered = true;
+            LabContext.SetHovered(AssociatedEquipmentId);
         }
     }
 
@@ -90,6 +103,7 @@ public class PCInteractionTester : MonoBehaviour
         {
             PopupUIManager.Instance.HidePopup();
             isHovered = false;
+            LabContext.SetHovered(EquipmentId.None);
         }
     }
 
@@ -98,18 +112,24 @@ public class PCInteractionTester : MonoBehaviour
         TriggerInteraction();
     }
 
-    public static void InspectEquipment(EquipmentId id, bool playEquipmentAudio = true)
+    public static void InspectEquipment(EquipmentId id, bool playEquipmentAudio = false)
     {
         if (Instances.TryGetValue(id, out var tester))
         {
             if (currentZoomedInstance != null && currentZoomedInstance != tester)
             {
-                currentZoomedInstance.ExitInspection();
+                currentZoomedInstance.CloseUI();
+                currentZoomedInstance.isZoomed = false;
+                currentZoomedInstance = null;
             }
 
             if (!tester.isZoomed)
             {
                 tester.TriggerInteraction(playEquipmentAudio);
+            }
+            else
+            {
+                tester.ShowPopupUI();
             }
         }
     }
@@ -122,19 +142,52 @@ public class PCInteractionTester : MonoBehaviour
         }
     }
 
-    public void EnterInspection(bool playAudio = true)
+    public void ShowPopupUI()
+    {
+        if (interactableLabel != null && PopupUIManager.Instance != null)
+        {
+            PopupUIManager.Instance.ShowPopup(interactableLabel.objectName, interactableLabel.objectDescription, transform);
+            PopupUIManager.Instance.SetInspectionMode(true);
+        }
+    }
+
+    public void CloseUI()
+    {
+        if (audioSource != null && audioSource.isPlaying) audioSource.Stop();
+        if (interactableLabel != null && PopupUIManager.Instance != null)
+        {
+            PopupUIManager.Instance.SetInspectionMode(false);
+            PopupUIManager.Instance.HidePopup();
+        }
+    }
+
+    public void EnterInspection(bool playAudio = false)
     {
         if (!isZoomed) TriggerInteraction(playAudio);
     }
 
     public void ExitInspection()
     {
-        if (isZoomed) TriggerInteraction(false);
+        if (isZoomed)
+        {
+            CloseUI();
+            if (currentZoomedInstance == this) currentZoomedInstance = null;
+            LabContext.SetInspected(EquipmentId.None);
+
+            StopAllCoroutines();
+            if (xrOrigin != null)
+            {
+                Vector3 returnPos = hasSavedDefaultOrigin ? defaultOriginPos : originalOriginPos;
+                Quaternion returnRot = hasSavedDefaultOrigin ? defaultOriginRot : originalOriginRot;
+                StartCoroutine(LerpTransform(xrOrigin, returnPos, returnRot, 1.0f));
+            }
+            isZoomed = false;
+        }
     }
 
     public void TriggerInteraction()
     {
-        TriggerInteraction(true);
+        TriggerInteraction(false);
     }
 
     public void TriggerInteraction(bool allowAudio)
@@ -163,11 +216,7 @@ public class PCInteractionTester : MonoBehaviour
                     audioSource.Play();
                 }
 
-                if (interactableLabel != null && PopupUIManager.Instance != null)
-                {
-                    PopupUIManager.Instance.ShowPopup(interactableLabel.objectName, interactableLabel.objectDescription, transform);
-                    PopupUIManager.Instance.SetInspectionMode(true); 
-                }
+                ShowPopupUI();
 
                 currentZoomedInstance = this;
                 LabContext.SetInspected(AssociatedEquipmentId);
@@ -197,20 +246,49 @@ public class PCInteractionTester : MonoBehaviour
             }
             else
             {
-                if (audioSource != null && audioSource.isPlaying) audioSource.Stop();
+                ExitInspection();
+            }
+        }
+    }
 
-                if (interactableLabel != null && PopupUIManager.Instance != null)
+    public void Highlight(float duration)
+    {
+        StartCoroutine(PulseEmissive(duration));
+    }
+
+    private IEnumerator PulseEmissive(float duration)
+    {
+        var renderers = GetComponentsInChildren<Renderer>();
+        if (renderers == null || renderers.Length == 0) yield break;
+
+        var mpb = new MaterialPropertyBlock();
+        Color highlightCol = new Color(0f, 0.9f, 1f, 1f); // Neon Cyan
+
+        float elapsed = 0;
+        while (elapsed < duration)
+        {
+            float t = Mathf.PingPong(elapsed * 3f, 1f);
+            Color glow = highlightCol * (t * 2.2f);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] != null)
                 {
-                    PopupUIManager.Instance.SetInspectionMode(false);
-                    PopupUIManager.Instance.HidePopup();
+                    renderers[i].GetPropertyBlock(mpb);
+                    mpb.SetColor("_EmissionColor", glow);
+                    renderers[i].SetPropertyBlock(mpb);
                 }
+            }
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
 
-                if (currentZoomedInstance == this) currentZoomedInstance = null;
-                LabContext.SetInspected(EquipmentId.None);
-
-                StopAllCoroutines();
-                StartCoroutine(LerpTransform(xrOrigin, originalOriginPos, originalOriginRot, 1.0f));
-                isZoomed = false;
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null)
+            {
+                renderers[i].GetPropertyBlock(mpb);
+                mpb.Clear();
+                renderers[i].SetPropertyBlock(mpb);
             }
         }
     }

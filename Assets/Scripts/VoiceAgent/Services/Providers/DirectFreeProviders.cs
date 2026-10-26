@@ -65,50 +65,21 @@ namespace FiveGLab.VoiceAgent
                 return response;
             }
 
-            // Intent to view, show, zoom, inspect, or navigate to equipment
-            bool isNavIntent = lowerQuery.Contains("show") || lowerQuery.Contains("see") || lowerQuery.Contains("view") ||
-                               lowerQuery.Contains("zoom") || lowerQuery.Contains("take") || lowerQuery.Contains("go to") ||
-                               lowerQuery.Contains("goto") || lowerQuery.Contains("inspect") || lowerQuery.Contains("look") ||
-                               lowerQuery.Contains("bring") || lowerQuery.Contains("lead") || lowerQuery.Contains("walk") ||
-                               lowerQuery.Contains("teleport") || lowerQuery.Contains("where is") || lowerQuery.Contains("dikhao") ||
-                               lowerQuery.Contains("le chalo") || lowerQuery.Contains("kahan hai");
+            // Show All Components Intent
+            if (lowerQuery.Contains("components") || lowerQuery.Contains("all components") || lowerQuery.Contains("show components") ||
+                lowerQuery.Contains("devices") || lowerQuery.Contains("equipment") || lowerQuery.Contains("kya components") || lowerQuery.Contains("components dikhao"))
+            {
+                response.textContent = "In our 5G lab, we have three key physical systems: the gNodeB base station antenna, the MEC Core server rack, and the RF Spectrum Analyzer. Let's take a tour to inspect each one!";
+                response.toolCalls.Add(new ToolCallRequest { id = "call_tour", toolName = "start_tour", argumentsJson = "{\"mode\":\"full\"}" });
+                return response;
+            }
 
-            bool isSpectrum = lowerQuery.Contains("spectrum") || lowerQuery.Contains("soectrum") ||
-                              lowerQuery.Contains("spectram") || lowerQuery.Contains("analyzer") ||
-                              lowerQuery.Contains("analyser");
-
-            bool isMec = lowerQuery.Contains("mec") || lowerQuery.Contains("server") ||
-                         lowerQuery.Contains("rack") || lowerQuery.Contains("bbu") ||
-                         lowerQuery.Contains("edge computing") || lowerQuery.Contains("black box");
-
-            bool isGnodeb = lowerQuery.Contains("gnodeb") || lowerQuery.Contains("antenna") ||
-                            lowerQuery.Contains("antena") || lowerQuery.Contains("base station") ||
-                            lowerQuery.Contains("cell tower") || lowerQuery.Contains("tower");
-
+            // Exit Inspection Intent
             bool isExit = lowerQuery.Contains("exit") || lowerQuery.Contains("zoom out") ||
                           lowerQuery.Contains("step back") || lowerQuery.Contains("stop inspect") ||
                           lowerQuery.Contains("back to room") || lowerQuery.Contains("piche") ||
-                          lowerQuery.Contains("wapas");
+                          lowerQuery.Contains("wapas") || lowerQuery.Contains("overview");
 
-            // Execute Equipment Zoom & Inspection Tools
-            if (isSpectrum && isNavIntent)
-            {
-                response.textContent = "Taking you to the RF Spectrum Analyzer for a closer look."; 
-                response.toolCalls.Add(new ToolCallRequest { id = "call_spec", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"spectrum\"}" });
-                return response;
-            }
-            if (isMec && isNavIntent)
-            {
-                response.textContent = "Zooming in on the MEC Core edge server rack."; 
-                response.toolCalls.Add(new ToolCallRequest { id = "call_mec", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"mec\"}" });
-                return response;
-            }
-            if (isGnodeb && isNavIntent)
-            {
-                response.textContent = "Here is the gNodeB base station antenna."; 
-                response.toolCalls.Add(new ToolCallRequest { id = "call_ant", toolName = "inspect_equipment", argumentsJson = "{\"id\":\"gnodeb\"}" });
-                return response;
-            }
             if (isExit)
             {
                 response.textContent = "Returning to the lab room overview.";
@@ -116,12 +87,38 @@ namespace FiveGLab.VoiceAgent
                 return response;
             }
 
-            // 2. Comprehensive 5G Knowledge Brain (50+ Topics, Zero-Latency, Pedagogical)
-            string semanticAnswer = FiveGKnowledgeBrain.Query(lowerQuery, knowledge);
-            if (!string.IsNullOrEmpty(semanticAnswer))
+            // 2. Comprehensive 5G Knowledge Brain with Physical Component Show & Inspection
+            var queryResult = FiveGKnowledgeBrain.QueryDetailed(lowerQuery, knowledge);
+            if (!string.IsNullOrEmpty(queryResult.text))
             {
-                response.textContent = semanticAnswer;
-                onTokenChunk?.Invoke(semanticAnswer);
+                response.textContent = queryResult.text;
+
+                // Whenever a question relates to a physical lab component, SHOW IT to the user in 3D!
+                if (queryResult.equipment != EquipmentId.None)
+                {
+                    string eqId = queryResult.equipment.ToIdString();
+
+                    // Smoothly glide camera to the component if not already inspecting it
+                    if (LabContext.CurrentInspected != queryResult.equipment)
+                    {
+                        response.toolCalls.Add(new ToolCallRequest
+                        {
+                            id = "call_inspect_" + eqId,
+                            toolName = "inspect_equipment",
+                            argumentsJson = $"{{\"id\":\"{eqId}\"}}"
+                        });
+                    }
+
+                    // Always highlight & illuminate the component to draw the user's attention
+                    response.toolCalls.Add(new ToolCallRequest
+                    {
+                        id = "call_highlight_" + eqId,
+                        toolName = "highlight_equipment",
+                        argumentsJson = $"{{\"id\":\"{eqId}\",\"duration_seconds\":5.0}}"
+                    });
+                }
+
+                onTokenChunk?.Invoke(response.textContent);
                 return response;
             }
 

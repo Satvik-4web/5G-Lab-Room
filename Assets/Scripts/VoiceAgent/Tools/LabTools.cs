@@ -72,7 +72,7 @@ namespace FiveGLab.VoiceAgent
 
                     if (id != EquipmentId.None)
                     {
-                        PCInteractionTester.InspectEquipment(id);
+                        PCInteractionTester.InspectEquipment(id, playEquipmentAudio: false);
                         await Task.CompletedTask;
                         return $"{{\"status\":\"success\",\"message\":\"Camera smoothly zoomed to {id.GetDisplayName()}\"}}";
                     }
@@ -188,6 +188,12 @@ namespace FiveGLab.VoiceAgent
         private static void HighlightInScene(EquipmentId id, float duration)
         {
             if (id == EquipmentId.None) return;
+
+            if (PCInteractionTester.Instances.TryGetValue(id, out var tester))
+            {
+                tester.Highlight(duration);
+                return;
+            }
 
             string searchKey = id switch
             {

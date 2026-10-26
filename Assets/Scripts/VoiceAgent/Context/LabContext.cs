@@ -37,9 +37,35 @@ namespace FiveGLab.VoiceAgent
         {
             if (go == null) return EquipmentId.None;
             string name = go.name.ToLowerInvariant();
-            if (name.Contains("gnodeb") || name.Contains("antenna") || name.Contains("base station")) return EquipmentId.gnodeb;
-            if (name.Contains("mec") || name.Contains("rack") || name.Contains("cabinet") || name.Contains("computing")) return EquipmentId.mec;
-            if (name.Contains("spectrum") || name.Contains("analyzer")) return EquipmentId.spectrum;
+
+            var label = go.GetComponent<InteractableLabel>() 
+                     ?? go.GetComponentInChildren<InteractableLabel>() 
+                     ?? go.GetComponentInParent<InteractableLabel>();
+            if (label != null && !string.IsNullOrEmpty(label.objectName))
+            {
+                name += " " + label.objectName.ToLowerInvariant();
+            }
+
+            if (go.transform.parent != null)
+            {
+                name += " " + go.transform.parent.name.ToLowerInvariant();
+            }
+
+            if (name.Contains("gnodeb") || name.Contains("antenna") || name.Contains("antena") || name.Contains("base station") || name.Contains("tower"))
+            {
+                return EquipmentId.gnodeb;
+            }
+
+            if (name.Contains("mec") || name.Contains("rack") || name.Contains("cabinet") || name.Contains("computing") || name.Contains("server"))
+            {
+                return EquipmentId.mec;
+            }
+
+            if (name.Contains("spectrum") || name.Contains("analyzer") || name.Contains("analyser") || name.Contains("soectrum") || name.Contains("spectram"))
+            {
+                return EquipmentId.spectrum;
+            }
+
             return EquipmentId.None;
         }
     }
