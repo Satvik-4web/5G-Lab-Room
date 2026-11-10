@@ -70,3 +70,10 @@ crashlytics-build.properties
 # Unity recovery scenes
 Assets/_Recovery/
 
+
+# Local course extracts and screenshots
+5G_Course_Material/
+Assets/Screenshots/
+Assets/Screenshots.meta
+Assets/equipments/1_cups_banner_clean.png*
+

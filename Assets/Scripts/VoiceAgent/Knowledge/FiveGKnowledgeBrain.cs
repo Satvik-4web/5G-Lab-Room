@@ -76,6 +76,15 @@ namespace FiveGLab.VoiceAgent
                 q.Contains("tell me about this") || q.Contains("ye kya hai") || q.Contains("kya hai ye") || 
                 q.Contains("btao") || q.Contains("kya dikh raha") || q.Contains("inspect this"))
             {
+                if (LabContext.CurrentInspected == EquipmentId.banner || LabContext.CurrentHovered == EquipmentId.banner)
+                {
+                    return new KnowledgeQueryResult
+                    {
+                        text = "You are looking at the 5G CUPS Architecture banner from the ECE Department at Thapar Institute. It illustrates how Control and User Plane Separation, or CUPS, decouples the cloud-native Control Plane (AMF, SMF, UDM, AUSF, NSSF, PCF) from distributed User Plane Functions (UPFs) to achieve sub-millisecond edge latency.",
+                        equipment = EquipmentId.banner,
+                        isConfident = true
+                    };
+                }
                 if (LabContext.CurrentInspected == EquipmentId.gnodeb || LabContext.CurrentHovered == EquipmentId.gnodeb)
                 {
                     return new KnowledgeQueryResult
@@ -205,6 +214,16 @@ namespace FiveGLab.VoiceAgent
         {
             entries = new List<KnowledgeEntry>
             {
+                // 0. 5G Architecture based on CUPS (Wall Banner)
+                new KnowledgeEntry
+                {
+                    id = "cups_banner",
+                    title = "5G Architecture based on CUPS (Wall Banner)",
+                    keywords = new string[] { "cups", "banner", "poster", "wall", "chart", "diagram", "architecture based on cups", "control and user plane separation", "cups banner", "wall banner", "module 1", "module one" },
+                    response = "This wall banner depicts the 5G Architecture based on CUPS (Control and User Plane Separation), specified in 3GPP TS 23.214. Diverse UEs connect through 5G, 4G, and Wi-Fi to a cloud-native Control Plane (AMF, SMF, UDM, AUSF, NSSF, PCF) and distributed User Plane Functions (UPFs), enabling local edge breakout with sub-millisecond latency.",
+                    associatedEquipment = EquipmentId.banner
+                },
+
                 // 1. Core Basics & Fundamentals
                 new KnowledgeEntry
                 {

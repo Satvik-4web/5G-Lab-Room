@@ -5,34 +5,58 @@ using UnityEngine;
 
 namespace FiveGLab.VoiceAgent
 {
+    /// <summary>
+    /// Reframed Module-Wise Course Controller for the 5G VR Simulator.
+    /// Progresses step-by-step from Module 1 (Wall Banner: CUPS Architecture)
+    /// through the 3D lab instruments (gNodeB -> MEC -> Spectrum Analyzer),
+    /// featuring animated highlighting, synchronized voice lecturing, and interactive quizzes.
+    /// </summary>
     public class GuidedTourController : MonoBehaviour
     {
         public static GuidedTourController Instance { get; private set; }
 
-        public enum TourStep
+        public enum ModuleStep
         {
             NotStarted,
             Intro,
-            gNodeB_Explaining,
-            gNodeB_Quiz,
-            MEC_Explaining,
-            MEC_Quiz,
-            Spectrum_Explaining,
-            Spectrum_Quiz,
+
+            // MODULE 1: 5G Network Architecture based on CUPS (Wall Banner)
+            Module1_Banner_Overview,
+            Module1_Banner_UE_Access,
+            Module1_Banner_ControlPlane,
+            Module1_Banner_UserPlane_CUPS,
+            Module1_Quiz,
+
+            // MODULE 2: gNodeB Base Station & Massive MIMO Radio
+            Module2_gNodeB_Intro,
+            Module2_gNodeB_Beamforming,
+            Module2_gNodeB_Quiz,
+
+            // MODULE 3: Mobile Edge Computing (MEC) Server Rack & Distributed UPF
+            Module3_MEC_Intro,
+            Module3_MEC_LowLatency,
+            Module3_MEC_Quiz,
+
+            // MODULE 4: RF Spectrum Analyzer & Signal Diagnostics
+            Module4_Spectrum_Intro,
+            Module4_Spectrum_Diagnostics,
+            Module4_Spectrum_Quiz,
+
+            // COMPLETION & RECAP
             RecapAndWrapUp,
             Completed
         }
 
         [SerializeField] private LabKnowledgeBase knowledgeBase;
-        private TourStep currentStep = TourStep.NotStarted;
+        private ModuleStep currentStep = ModuleStep.NotStarted;
         private Coroutine tourRoutine;
         private bool isWaitingForQuizAnswer = false;
         private QuizQuestion currentQuizQuestion = null;
 
-        public bool IsTourActive => currentStep != TourStep.NotStarted && currentStep != TourStep.Completed;
-        public TourStep CurrentStep => currentStep;
+        public bool IsTourActive => currentStep != ModuleStep.NotStarted && currentStep != ModuleStep.Completed;
+        public ModuleStep CurrentStep => currentStep;
 
-        public event Action<TourStep> OnStepChanged;
+        public event Action<ModuleStep> OnStepChanged;
 
         private void Awake()
         {
@@ -43,12 +67,11 @@ namespace FiveGLab.VoiceAgent
         public void StartTour(string mode = "full", string specificEquipment = null)
         {
             if (tourRoutine != null) StopCoroutine(tourRoutine);
-            tourRoutine = StartCoroutine(RunTourSequence(mode, specificEquipment));
+            tourRoutine = StartCoroutine(RunModularCourseSequence(mode, specificEquipment));
         }
 
         public void NextStop()
         {
-            // Advance step if waiting
             isWaitingForQuizAnswer = false;
         }
 
@@ -59,9 +82,16 @@ namespace FiveGLab.VoiceAgent
                 StopCoroutine(tourRoutine);
                 tourRoutine = null;
             }
-            currentStep = TourStep.Completed;
+            currentStep = ModuleStep.Completed;
+            CupsBannerDisplay.Instance?.SetHighlightSection("none");
+            CupsBannerDisplay.Instance?.SetPopUpState(false);
             PCInteractionTester.ExitCurrentInspection();
             OnStepChanged?.Invoke(currentStep);
+
+            if (VoiceAgentManager.Instance != null)
+            {
+                VoiceAgentManager.Instance.SetState(AgentState.Idle);
+            }
         }
 
         public bool SubmitSpokenAnswer(string transcript, out string feedback)
@@ -92,7 +122,7 @@ namespace FiveGLab.VoiceAgent
                     VoiceAgentManager.Instance.Memory.QuizScore++;
                     VoiceAgentManager.Instance.Memory.TotalQuizQuestions++;
                 }
-                feedback = $"Spot on! {currentQuizQuestion.explanation}";
+                feedback = $"Excellent! {currentQuizQuestion.explanation}";
             }
             else
             {
@@ -100,101 +130,169 @@ namespace FiveGLab.VoiceAgent
                 {
                     VoiceAgentManager.Instance.Memory.TotalQuizQuestions++;
                 }
-                feedback = $"Good try! The key takeaway is: {currentQuizQuestion.explanation}";
+                feedback = $"Good try! The correct concept is: {currentQuizQuestion.explanation}";
             }
 
             return true;
         }
 
-        private IEnumerator RunTourSequence(string mode, string specificEquipment)
+        private IEnumerator RunModularCourseSequence(string mode, string specificEquipment)
         {
             if (VoiceAgentManager.Instance != null)
             {
                 VoiceAgentManager.Instance.SetState(AgentState.Touring);
             }
 
-            // 1. Intro Step
-            currentStep = TourStep.Intro;
+            // ==========================================
+            // INTRO: Welcome to the 5G Modular Academy
+            // ==========================================
+            currentStep = ModuleStep.Intro;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Welcome to the interactive 5G Lab Tour! Today, we will explore how high-speed radio waves, edge computing, and precision diagnostics connect to make 5G possible. Let's begin at the antenna!");
+            yield return SpeakAndWait("Welcome to the 5G VR Laboratory! Today, we will master 5G through four interactive modules. We will start at the wall banner to study the complete CUPS architecture, and then inspect our 3D lab instruments one by one.");
 
-            // 2. gNodeB Base Station
-            currentStep = TourStep.gNodeB_Explaining;
+            // ==========================================
+            // MODULE 1: 5G ARCHITECTURE BASED ON CUPS
+            // ==========================================
+            currentStep = ModuleStep.Module1_Banner_Overview;
             OnStepChanged?.Invoke(currentStep);
+
+            // Zoom camera directly in front of the wall banner and pop it forward
+            PCInteractionTester.InspectEquipment(EquipmentId.banner);
+            yield return new WaitForSeconds(1.3f);
+            CupsBannerDisplay.Instance?.SetPopUpState(true);
+            CupsBannerDisplay.Instance?.SetHighlightSection("all");
+
+            yield return SpeakAndWait("Module 1: 5G Architecture based on CUPS, as standardized in 3GPP Specification 23.214. CUPS stands for Control and User Plane Separation, allowing the control signaling and user data forwarding to scale independently.");
+
+            // Module 1 - Step A: UEs and Access Networks
+            currentStep = ModuleStep.Module1_Banner_UE_Access;
+            OnStepChanged?.Invoke(currentStep);
+            CupsBannerDisplay.Instance?.SetHighlightSection("ue");
+            yield return SpeakAndWait("On the left, notice the diverse User Equipment, spanning IoT sensors, connected autonomous cars, 5G smartphones, and fixed computers. Each demands radically different latency and throughput.");
+
+            CupsBannerDisplay.Instance?.SetHighlightSection("access");
+            yield return SpeakAndWait("These UEs connect through heterogeneous access networks: 5G gNodeB New Radio, legacy 4G eNodeB, untrusted Wi-Fi routed via the N3IWF IPsec gateway, and fixed wireline.");
+
+            // Module 1 - Step B: 5G Control Plane (SBA)
+            currentStep = ModuleStep.Module1_Banner_ControlPlane;
+            OnStepChanged?.Invoke(currentStep);
+            CupsBannerDisplay.Instance?.SetHighlightSection("control");
+            yield return SpeakAndWait("Look at the top-right box: the 5G Control Plane. Built on a cloud-native Service-Based Architecture, modular functions like the AMF for mobility, SMF for session management, UDM and AUSF for authentication, and NSSF for network slicing communicate over REST HTTP/2 APIs.");
+
+            // Module 1 - Step C: 5G User Plane & CUPS
+            currentStep = ModuleStep.Module1_Banner_UserPlane_CUPS;
+            OnStepChanged?.Invoke(currentStep);
+            CupsBannerDisplay.Instance?.SetHighlightSection("user_plane");
+            yield return SpeakAndWait("Below it is the 5G User Plane. Here lies the true power of CUPS: while the SMF centrally manages session rules over the N4 PFCP interface, high-speed User Plane Functions, or UPFs, are distributed directly to the cell site. This enables local breakout into a Local Data Network, cutting round-trip latency to under one millisecond!");
+
+            // Module 1 Quiz
+            currentStep = ModuleStep.Module1_Quiz;
+            OnStepChanged?.Invoke(currentStep);
+            currentQuizQuestion = new QuizQuestion
+            {
+                question = "In the 5G CUPS architecture, which network function handles data packet forwarding at the edge?",
+                acceptedKeywords = new[] { "upf", "user plane", "user plane function" },
+                explanation = "The UPF (User Plane Function) forwards user payload data and enables local edge breakout under SMF control."
+            };
+            yield return SpeakAndWait($"Check on Module 1: {currentQuizQuestion.question} Hold [V] to answer!");
+            yield return WaitForAnswerOrTimeout(8f);
+
+            // Clean up Module 1 visuals before transitioning
+            CupsBannerDisplay.Instance?.SetHighlightSection("none");
+            CupsBannerDisplay.Instance?.SetPopUpState(false);
+            yield return new WaitForSeconds(0.6f);
+
+            // ==========================================
+            // MODULE 2: gNodeB BASE STATION & RADIO
+            // ==========================================
+            currentStep = ModuleStep.Module2_gNodeB_Intro;
+            OnStepChanged?.Invoke(currentStep);
+            yield return SpeakAndWait("Outstanding! Now let's move to Module 2 to inspect our 3D gNodeB base station antenna!");
+
             PCInteractionTester.InspectEquipment(EquipmentId.gnodeb);
-            yield return new WaitForSeconds(1.2f);
+            yield return new WaitForSeconds(1.3f);
 
-            var gnodebData = knowledgeBase?.GetEquipment(EquipmentId.gnodeb);
-            string gnodebExplain = gnodebData != null 
-                ? "This is the gNodeB, our 5G base station. It connects mobile devices to the core network using Massive MIMO and Active Beamforming. Instead of radiating in all directions like a lightbulb, it focuses energy into narrow beams aimed directly at users."
-                : "You are looking at the gNodeB base station, which beams 5G signals directly to mobile devices.";
-            yield return SpeakAndWait(gnodebExplain);
-
-            // gNodeB Quiz
-            currentStep = TourStep.gNodeB_Quiz;
+            currentStep = ModuleStep.Module2_gNodeB_Beamforming;
             OnStepChanged?.Invoke(currentStep);
-            currentQuizQuestion = (gnodebData?.quizQuestions != null && gnodebData.quizQuestions.Length > 0)
-                ? gnodebData.quizQuestions[0]
-                : new QuizQuestion { question = "What does active beamforming do to radio signals?", acceptedKeywords = new[] { "focus", "direct", "narrow" }, explanation = "Beamforming focuses radio energy into narrow beams toward user devices." };
+            yield return SpeakAndWait("This is our gNodeB, connecting mobile UEs over 5G New Radio. It features Massive MIMO with 64 transmit and 64 receive elements. Using active beamforming, it shapes radio waves into narrow, high-gain beams directed straight at active users, drastically eliminating interference.");
 
-            yield return SpeakAndWait($"Quick check: {currentQuizQuestion.question} Press V and tell me!");
+            // Module 2 Quiz
+            currentStep = ModuleStep.Module2_gNodeB_Quiz;
+            OnStepChanged?.Invoke(currentStep);
+            currentQuizQuestion = new QuizQuestion
+            {
+                question = "What does active beamforming do to 5G radio signals?",
+                acceptedKeywords = new[] { "focus", "direct", "narrow", "target", "pencil" },
+                explanation = "Beamforming focuses radio wave energy into targeted, narrow beams directed at user devices."
+            };
+            yield return SpeakAndWait($"Check on Module 2: {currentQuizQuestion.question} Hold [V] and tell me!");
             yield return WaitForAnswerOrTimeout(8f);
 
-            // 3. MEC-Core Server Rack
-            currentStep = TourStep.MEC_Explaining;
+            // ==========================================
+            // MODULE 3: MEC-CORE SERVER RACK & EDGE UPF
+            // ==========================================
+            currentStep = ModuleStep.Module3_MEC_Intro;
             OnStepChanged?.Invoke(currentStep);
+            yield return SpeakAndWait("Next, let's advance to Module 3: the Mobile Edge Computing core server rack!");
+
             PCInteractionTester.InspectEquipment(EquipmentId.mec);
-            yield return new WaitForSeconds(1.2f);
+            yield return new WaitForSeconds(1.3f);
 
-            var mecData = knowledgeBase?.GetEquipment(EquipmentId.mec);
-            string mecExplain = mecData != null
-                ? "Next, we have the Mobile Edge Computing core, or MEC. By placing GPU and Baseband compute servers right next to the cell tower, we achieve round-trip latencies under one millisecond for robotics and autonomous driving."
-                : "This server rack is the MEC Core, processing edge compute in under one millisecond.";
-            yield return SpeakAndWait(mecExplain);
-
-            // MEC Quiz
-            currentStep = TourStep.MEC_Quiz;
+            currentStep = ModuleStep.Module3_MEC_LowLatency;
             OnStepChanged?.Invoke(currentStep);
-            currentQuizQuestion = (mecData?.quizQuestions != null && mecData.quizQuestions.Length > 0)
-                ? mecData.quizQuestions[0]
-                : new QuizQuestion { question = "Why do we place MEC servers at the edge of the network?", acceptedKeywords = new[] { "latency", "speed", "closer" }, explanation = "Placing servers at the edge drastically cuts latency." };
+            yield return SpeakAndWait("This is the MEC server rack. As we saw on the CUPS banner, placing baseband units and a localized UPF right here at the edge delivers processing latency under one millisecond. This ultra-reliable low latency is mandatory for tele-surgery, robotics, and self-driving cars.");
 
-            yield return SpeakAndWait($"Quick check: {currentQuizQuestion.question} Hold V to answer!");
+            // Module 3 Quiz
+            currentStep = ModuleStep.Module3_MEC_Quiz;
+            OnStepChanged?.Invoke(currentStep);
+            currentQuizQuestion = new QuizQuestion
+            {
+                question = "Why do we place MEC servers at the edge of the network?",
+                acceptedKeywords = new[] { "latency", "speed", "fast", "closer", "delay", "millisecond" },
+                explanation = "Placing MEC servers at the edge eliminates backhaul delays and delivers sub-millisecond response times."
+            };
+            yield return SpeakAndWait($"Check on Module 3: {currentQuizQuestion.question} Hold [V] to answer!");
             yield return WaitForAnswerOrTimeout(8f);
 
-            // 4. Spectrum Analyzer
-            currentStep = TourStep.Spectrum_Explaining;
+            // ==========================================
+            // MODULE 4: RF SPECTRUM ANALYZER
+            // ==========================================
+            currentStep = ModuleStep.Module4_Spectrum_Intro;
             OnStepChanged?.Invoke(currentStep);
+            yield return SpeakAndWait("Finally, let's step to Module 4 to inspect our precision RF Spectrum Analyzer!");
+
             PCInteractionTester.InspectEquipment(EquipmentId.spectrum);
-            yield return new WaitForSeconds(1.2f);
+            yield return new WaitForSeconds(1.3f);
 
-            var spectrumData = knowledgeBase?.GetEquipment(EquipmentId.spectrum);
-            string spectrumExplain = spectrumData != null
-                ? "Finally, this is the RF Spectrum Analyzer. It measures signal amplitude across frequencies from two hertz up to eighty-five gigahertz, helping engineers verify transmissions and eliminate interference."
-                : "This is the RF Spectrum Analyzer, our precision frequency diagnostic tool.";
-            yield return SpeakAndWait(spectrumExplain);
-
-            // Spectrum Quiz
-            currentStep = TourStep.Spectrum_Quiz;
+            currentStep = ModuleStep.Module4_Spectrum_Diagnostics;
             OnStepChanged?.Invoke(currentStep);
-            currentQuizQuestion = (spectrumData?.quizQuestions != null && spectrumData.quizQuestions.Length > 0)
-                ? spectrumData.quizQuestions[0]
-                : new QuizQuestion { question = "What two variables does a spectrum analyzer plot on its screen?", acceptedKeywords = new[] { "amplitude", "power", "frequency" }, explanation = "It plots signal power or amplitude against frequency." };
+            yield return SpeakAndWait("This RF Spectrum Analyzer measures signal power across frequencies from two hertz up to eighty-five gigahertz. Telecom engineers use it to verify 5G Sub-6 and millimeter wave transmissions, measure Error Vector Magnitude, and hunt down radio interference.");
 
-            yield return SpeakAndWait($"Last question: {currentQuizQuestion.question} Press V to tell me!");
+            // Module 4 Quiz
+            currentStep = ModuleStep.Module4_Spectrum_Quiz;
+            OnStepChanged?.Invoke(currentStep);
+            currentQuizQuestion = new QuizQuestion
+            {
+                question = "What two variables does a spectrum analyzer display on its screen?",
+                acceptedKeywords = new[] { "power", "amplitude", "frequency", "freq" },
+                explanation = "The spectrum analyzer plots signal power or amplitude on the vertical axis against frequency on the horizontal axis."
+            };
+            yield return SpeakAndWait($"Final check on Module 4: {currentQuizQuestion.question} Hold [V] and answer!");
             yield return WaitForAnswerOrTimeout(8f);
 
-            // 5. Recap and Wrap-Up
-            currentStep = TourStep.RecapAndWrapUp;
+            // ==========================================
+            // RECAP & GRADUATION
+            // ==========================================
+            currentStep = ModuleStep.RecapAndWrapUp;
             OnStepChanged?.Invoke(currentStep);
             PCInteractionTester.ExitCurrentInspection();
-            yield return new WaitForSeconds(1.0f);
+            yield return new WaitForSeconds(1.1f);
 
             int score = VoiceAgentManager.Instance?.Memory?.QuizScore ?? 0;
-            int total = VoiceAgentManager.Instance?.Memory?.TotalQuizQuestions ?? 3;
-            yield return SpeakAndWait($"That concludes our 5G lab tour! Together, the gNodeB radiates targeted beams, the MEC Core powers instant responses under one millisecond, and the Spectrum Analyzer ensures clean transmission. You scored {score} out of {total} on the quiz! Feel free to ask me any more questions anytime.");
+            int total = VoiceAgentManager.Instance?.Memory?.TotalQuizQuestions ?? 4;
+            yield return SpeakAndWait($"Congratulations! You have completed all four modules of our 5G VR Laboratory! From the CUPS architecture banner on the wall to the gNodeB, the MEC edge servers, and the Spectrum Analyzer. You scored {score} out of {total} on the quiz! Feel free to ask me anything about 5G anytime.");
 
-            currentStep = TourStep.Completed;
+            currentStep = ModuleStep.Completed;
             OnStepChanged?.Invoke(currentStep);
             if (VoiceAgentManager.Instance != null)
             {
@@ -225,13 +323,12 @@ namespace FiveGLab.VoiceAgent
             float elapsed = 0;
             while (isWaitingForQuizAnswer && elapsed < timeoutSeconds)
             {
-                // If user is currently holding V, speaking, or agent is transcribing/thinking, pause timeout!
                 if (VoiceAgentManager.Instance != null &&
                     (VoiceAgentManager.Instance.CurrentState == AgentState.Listening ||
                      VoiceAgentManager.Instance.CurrentState == AgentState.Transcribing ||
                      VoiceAgentManager.Instance.CurrentState == AgentState.Thinking))
                 {
-                    elapsed = 0f; // Give user uninterrupted time to answer!
+                    elapsed = 0f;
                 }
                 else
                 {
@@ -242,9 +339,8 @@ namespace FiveGLab.VoiceAgent
 
             if (isWaitingForQuizAnswer)
             {
-                // Timed out with no answer
                 isWaitingForQuizAnswer = false;
-                yield return SpeakAndWait($"Let's keep going! {currentQuizQuestion?.explanation}");
+                yield return SpeakAndWait($"Let's keep moving! {currentQuizQuestion?.explanation}");
             }
         }
     }

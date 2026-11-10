@@ -51,6 +51,11 @@ namespace FiveGLab.VoiceAgent
                 name += " " + go.transform.parent.name.ToLowerInvariant();
             }
 
+            if (name.Contains("banner") || name.Contains("poster") || name.Contains("cups") || name.Contains("architecture"))
+            {
+                return EquipmentId.banner;
+            }
+
             if (name.Contains("gnodeb") || name.Contains("antenna") || name.Contains("antena") || name.Contains("base station") || name.Contains("tower"))
             {
                 return EquipmentId.gnodeb;

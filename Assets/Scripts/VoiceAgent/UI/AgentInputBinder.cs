@@ -177,11 +177,11 @@ namespace FiveGLab.VoiceAgent
             }
             catch { }
 
-            if (k1) _ = manager.ProcessTypedInputAsync("Start the 5G guided tour");
-            if (k2) _ = manager.ProcessTypedInputAsync("Take me to the spectrum analyzer");
+            if (k1) _ = manager.ProcessTypedInputAsync("Explain the 5G CUPS architecture banner on the wall");
+            if (k2) _ = manager.ProcessTypedInputAsync("Take me to the gNodeB base station");
             if (k3) _ = manager.ProcessTypedInputAsync("Zoom in on the MEC core server rack");
-            if (k4) _ = manager.ProcessTypedInputAsync("Take me to the gNodeB base station");
-            if (k5) _ = manager.ProcessTypedInputAsync("What is active beamforming?");
+            if (k4) _ = manager.ProcessTypedInputAsync("Take me to the spectrum analyzer");
+            if (k5) _ = manager.ProcessTypedInputAsync("Start the 5G guided tour");
         }
 
         public void ToggleSpeechRecording()
@@ -323,14 +323,14 @@ namespace FiveGLab.VoiceAgent
                     mic?.CycleToNextDevice();
                     manager.HUD?.UpdateStateVisuals(manager.CurrentState);
                 }
-                if (GUILayout.Button("[1] Tour")) _ = manager.ProcessTypedInputAsync("Start the 5G guided tour");
-                if (GUILayout.Button("[2] Spectrum")) _ = manager.ProcessTypedInputAsync("Take me to the spectrum analyzer");
+                if (GUILayout.Button("[1] Banner")) _ = manager.ProcessTypedInputAsync("Explain the 5G CUPS architecture banner on the wall");
+                if (GUILayout.Button("[2] gNodeB")) _ = manager.ProcessTypedInputAsync("Take me to the gNodeB base station");
                 GUILayout.EndHorizontal();
 
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("[3] MEC Rack")) _ = manager.ProcessTypedInputAsync("Zoom in on the MEC core server rack");
-                if (GUILayout.Button("[4] gNodeB")) _ = manager.ProcessTypedInputAsync("Take me to the gNodeB base station");
-                if (GUILayout.Button("[5] Beamforming")) _ = manager.ProcessTypedInputAsync("What is active beamforming?");
+                if (GUILayout.Button("[4] Spectrum")) _ = manager.ProcessTypedInputAsync("Take me to the spectrum analyzer");
+                if (GUILayout.Button("🎓 4-Module Tour")) _ = manager.ProcessTypedInputAsync("Start the 5G guided tour");
                 if (GUILayout.Button("[T] Ask")) { isTypingOpen = true; }
                 GUILayout.EndHorizontal();
 

@@ -174,6 +174,11 @@ public class PCInteractionTester : MonoBehaviour
             if (currentZoomedInstance == this) currentZoomedInstance = null;
             LabContext.SetInspected(EquipmentId.None);
 
+            if (AssociatedEquipmentId == EquipmentId.banner)
+            {
+                CupsBannerDisplay.Instance?.SetPopUpState(false);
+            }
+
             StopAllCoroutines();
             if (xrOrigin != null)
             {
@@ -243,6 +248,11 @@ public class PCInteractionTester : MonoBehaviour
                 StopAllCoroutines();
                 StartCoroutine(LerpTransform(xrOrigin, targetOriginPos, targetOriginRot, 1.2f));
                 isZoomed = true;
+
+                if (AssociatedEquipmentId == EquipmentId.banner)
+                {
+                    CupsBannerDisplay.Instance?.SetPopUpState(true);
+                }
             }
             else
             {
