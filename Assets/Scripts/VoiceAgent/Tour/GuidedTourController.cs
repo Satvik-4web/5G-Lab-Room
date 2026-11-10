@@ -48,6 +48,11 @@ namespace FiveGLab.VoiceAgent
         }
 
         [SerializeField] private LabKnowledgeBase knowledgeBase;
+        [Header("Auto Start Configuration")]
+        [Tooltip("Automatically launch directly into Module 1 (Wall Banner) when entering Play Mode")]
+        [SerializeField] private bool autoStartModule1OnPlay = true;
+        [SerializeField] private float autoStartDelaySeconds = 1.0f;
+
         private ModuleStep currentStep = ModuleStep.NotStarted;
         private Coroutine tourRoutine;
         private bool isWaitingForQuizAnswer = false;
@@ -62,6 +67,25 @@ namespace FiveGLab.VoiceAgent
         {
             if (Instance == null) Instance = this;
             else Destroy(gameObject);
+        }
+
+        private void Start()
+        {
+            if (autoStartModule1OnPlay)
+            {
+                StartCoroutine(AutoStartRoutine());
+            }
+        }
+
+        private IEnumerator AutoStartRoutine()
+        {
+            // Allow all singletons, VR Origin, and audio systems to initialize cleanly
+            yield return new WaitForSeconds(autoStartDelaySeconds);
+            if (currentStep == ModuleStep.NotStarted)
+            {
+                Debug.Log("[GuidedTourController] Auto-starting directly into Module 1 on Play mode entry...");
+                StartTour("full");
+            }
         }
 
         public void StartTour(string mode = "full", string specificEquipment = null)
@@ -144,25 +168,19 @@ namespace FiveGLab.VoiceAgent
             }
 
             // ==========================================
-            // INTRO: Welcome to the 5G Modular Academy
-            // ==========================================
-            currentStep = ModuleStep.Intro;
-            OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Welcome to the 5G VR Laboratory! Today, we will master 5G through four interactive modules. We will start at the wall banner to study the complete CUPS architecture, and then inspect our 3D lab instruments one by one.");
-
-            // ==========================================
             // MODULE 1: 5G ARCHITECTURE BASED ON CUPS
+            // Direct launch: camera immediately glides to the wall banner and pops it forward
             // ==========================================
             currentStep = ModuleStep.Module1_Banner_Overview;
             OnStepChanged?.Invoke(currentStep);
 
             // Zoom camera directly in front of the wall banner and pop it forward
             PCInteractionTester.InspectEquipment(EquipmentId.banner);
-            yield return new WaitForSeconds(1.3f);
+            yield return new WaitForSeconds(1.0f);
             CupsBannerDisplay.Instance?.SetPopUpState(true);
             CupsBannerDisplay.Instance?.SetHighlightSection("all");
 
-            yield return SpeakAndWait("Module 1: 5G Architecture based on CUPS, as standardized in 3GPP Specification 23.214. CUPS stands for Control and User Plane Separation, allowing the control signaling and user data forwarding to scale independently.");
+            yield return SpeakAndWait("Welcome to the 5G VR Laboratory! We are directly beginning with Module 1: 5G Architecture based on CUPS, as standardized in 3GPP Specification 23.214. CUPS stands for Control and User Plane Separation, allowing the control signaling and user data forwarding to scale independently.");
 
             // Module 1 - Step A: UEs and Access Networks
             currentStep = ModuleStep.Module1_Banner_UE_Access;
