@@ -309,6 +309,8 @@ namespace FiveGLab.VoiceAgent
             CancelInFlightOperations();
             activeCts = new CancellationTokenSource();
 
+            int naturalReadingDelayMs = Mathf.Max(3800, text.Split(' ').Length * 300);
+
             try
             {
                 SetState(AgentState.Speaking);
@@ -326,12 +328,15 @@ namespace FiveGLab.VoiceAgent
                 else
                 {
                     if (hud != null) hud.ShowSubtitle(text);
-                    await Task.Delay(3000);
+                    await Task.Delay(naturalReadingDelayMs);
                     onComplete?.Invoke();
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.LogWarning($"[VoiceAgentManager] Narrative speech error: {ex.Message}");
+                if (hud != null) hud.ShowSubtitle(text);
+                await Task.Delay(naturalReadingDelayMs);
                 onComplete?.Invoke();
             }
         }

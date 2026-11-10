@@ -229,21 +229,37 @@ public class PCInteractionTester : MonoBehaviour
                 originalOriginPos = xrOrigin.position;
                 originalOriginRot = xrOrigin.rotation;
                 
-                // Calculate zoom straight in from the camera's current viewing angle
-                Vector3 objCenter = transform.position;
-                BoxCollider col = GetComponent<BoxCollider>();
-                if (col != null) objCenter = transform.TransformPoint(col.center);
-                
-                Vector3 dirToCamera = (Camera.main.transform.position - objCenter).normalized;
-                Vector3 desiredCameraPos = objCenter + (dirToCamera * distanceInFront);
-                desiredCameraPos.y = objCenter.y + 0.15f; 
+                Vector3 targetOriginPos;
+                Quaternion targetOriginRot;
 
-                Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
-                Vector3 targetOriginPos = desiredCameraPos - cameraLocalOffset;
-                
-                Vector3 lookDirection = objCenter - desiredCameraPos;
-                Quaternion desiredCameraRot = Quaternion.LookRotation(lookDirection);
-                Quaternion targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
+                if (AssociatedEquipmentId == EquipmentId.banner)
+                {
+                    // Perfectly frame the 5G CUPS Architecture banner directly in front of the viewer
+                    Vector3 desiredCameraPos = new Vector3(2.20f, 2.40f, -1.49f);
+                    Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
+                    targetOriginPos = desiredCameraPos - cameraLocalOffset;
+
+                    Quaternion desiredCameraRot = Quaternion.Euler(0f, 90f, 0f);
+                    targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
+                }
+                else
+                {
+                    // Calculate zoom straight in from the camera's current viewing angle
+                    Vector3 objCenter = transform.position;
+                    BoxCollider col = GetComponent<BoxCollider>();
+                    if (col != null) objCenter = transform.TransformPoint(col.center);
+                    
+                    Vector3 dirToCamera = (Camera.main.transform.position - objCenter).normalized;
+                    Vector3 desiredCameraPos = objCenter + (dirToCamera * distanceInFront);
+                    desiredCameraPos.y = objCenter.y + 0.15f; 
+
+                    Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
+                    targetOriginPos = desiredCameraPos - cameraLocalOffset;
+                    
+                    Vector3 lookDirection = objCenter - desiredCameraPos;
+                    Quaternion desiredCameraRot = Quaternion.LookRotation(lookDirection);
+                    targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
+                }
 
                 StopAllCoroutines();
                 StartCoroutine(LerpTransform(xrOrigin, targetOriginPos, targetOriginRot, 1.2f));
