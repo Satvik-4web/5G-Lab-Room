@@ -234,8 +234,8 @@ public class PCInteractionTester : MonoBehaviour
 
                 if (AssociatedEquipmentId == EquipmentId.banner)
                 {
-                    // Perfectly frame the 5G CUPS Architecture banner directly in front of the viewer
-                    Vector3 desiredCameraPos = new Vector3(2.20f, 2.40f, -1.49f);
+                    // Perfectly frame the resized 5G CUPS Architecture banner directly in front of the viewer
+                    Vector3 desiredCameraPos = new Vector3(3.0f, 2.25f, -1.80f);
                     Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
                     targetOriginPos = desiredCameraPos - cameraLocalOffset;
 

@@ -15,8 +15,9 @@ namespace FiveGLab.VoiceAgent
         public static CupsBannerDisplay Instance { get; private set; }
 
         [Header("Banner Positioning & Pop-Up")]
-        [SerializeField] private Vector3 wallRestPosition = new Vector3(7.42f, 2.34f, -1.49f);
-        [SerializeField] private Vector3 poppedPosition = new Vector3(5.40f, 2.40f, -1.49f);
+        [SerializeField] private Vector3 wallRestPosition = new Vector3(7.42f, 2.25f, -1.80f);
+        [SerializeField] private Vector3 poppedPosition = new Vector3(5.50f, 2.25f, -1.80f);
+        [SerializeField] private Vector3 bannerScale = new Vector3(3.60f, 1.80f, 1.0f);
         [SerializeField] private float popDuration = 0.85f;
 
         [Header("Colors")]
@@ -41,6 +42,7 @@ namespace FiveGLab.VoiceAgent
         private void Awake()
         {
             if (Instance == null) Instance = this;
+            transform.localScale = bannerScale;
             transform.position = wallRestPosition;
             BuildHighlightOutlines();
         }
@@ -57,22 +59,22 @@ namespace FiveGLab.VoiceAgent
             // 1. Overall Banner Border Frame
             lineFrame = CreateOutlineLine("Outline_Frame",
                 -0.495f, 0.495f, -0.495f, 0.495f, -0.015f,
-                colFrame, 0.02f, unlitShader);
+                colFrame, 0.012f, unlitShader);
 
             // 2. Zone 1: UE & Heterogeneous Access Network (Left Side)
             lineUE = CreateOutlineLine("Outline_UE_Access",
                 -0.485f, -0.05f, -0.47f, 0.42f, -0.02f,
-                colCyan, 0.022f, unlitShader);
+                colCyan, 0.014f, unlitShader);
 
             // 3. Zone 2: 5G Control Plane SBA (Top Right)
             lineControl = CreateOutlineLine("Outline_ControlPlane",
                 -0.05f, 0.485f, 0.02f, 0.42f, -0.02f,
-                colGold, 0.022f, unlitShader);
+                colGold, 0.014f, unlitShader);
 
             // 4. Zone 3: 5G User Plane & Distributed UPFs (Bottom Right)
             lineUserPlane = CreateOutlineLine("Outline_UserPlane",
                 -0.05f, 0.485f, -0.47f, 0.02f, -0.02f,
-                colGreen, 0.022f, unlitShader);
+                colGreen, 0.014f, unlitShader);
         }
 
         private LineRenderer CreateOutlineLine(string name, float x0, float x1, float y0, float y1, float z, Color color, float width, Shader shader)
