@@ -234,12 +234,13 @@ public class PCInteractionTester : MonoBehaviour
 
                 if (AssociatedEquipmentId == EquipmentId.banner)
                 {
-                    // Perfectly frame the resized 5G CUPS Architecture banner directly in front of the viewer
-                    Vector3 desiredCameraPos = new Vector3(3.0f, 2.25f, -1.80f);
+                    // Perfectly frame the professionally angled 5G CUPS smart board at standing eye level
+                    Vector3 desiredCameraPos = new Vector3(2.90f, 1.85f, -1.80f);
                     Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
                     targetOriginPos = desiredCameraPos - cameraLocalOffset;
 
-                    Quaternion desiredCameraRot = Quaternion.Euler(0f, 90f, 0f);
+                    // 3-degree downward pitch looks directly perpendicular to the 6-degree tilted presentation board
+                    Quaternion desiredCameraRot = Quaternion.Euler(3.0f, 90f, 0f);
                     targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
                 }
                 else

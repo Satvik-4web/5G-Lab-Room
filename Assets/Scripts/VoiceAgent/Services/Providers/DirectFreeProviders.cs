@@ -130,10 +130,13 @@ namespace FiveGLab.VoiceAgent
     }
 
     /// <summary>
-    /// Direct Free TTS using Google Translate Neural Voice. 100% Free, Zero Key, True Human Audio.
+    /// Direct Free TTS using Microsoft Azure Neural Voice (en-US-AriaNeural) via Edge-TTS,
+    /// with seamless fallback to Google Translate Neural Voice. 100% Free, Zero Key, True Human Audio.
     /// </summary>
     public class DirectFreeTextToSpeech : ITextToSpeech
     {
+        private readonly string scriptPath = @"D:\5G-Lab-Room\synthesize.py";
+
         public async Task<AudioClip> SynthesizeAsync(string text, string voice, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(text)) return null;
@@ -141,28 +144,122 @@ namespace FiveGLab.VoiceAgent
             // Stop any equipment audio so voices never clash!
             AgentSpeaker.DuckOtherAudioSources();
 
-            string clean = Regex.Replace(text, @"[\*#`_>\[\]\n\r]", " ").Trim();
-            if (clean.Length > 180) clean = clean.Substring(0, 180);
-
-            string url = $"https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q={UnityWebRequest.EscapeURL(clean)}";
-
-            using var req = UnityWebRequestMultimedia.GetAudioClip(url, AudioType.MPEG);
-            req.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-            req.timeout = 7;
-
-            var op = req.SendWebRequest();
-            while (!op.isDone)
+            // 1. Primary: Microsoft Azure Neural Voice (AriaNeural) via Python synthesize.py (100% Free, Zero Key)
+            if (File.Exists(scriptPath))
             {
-                if (ct.IsCancellationRequested) { req.Abort(); ct.ThrowIfCancellationRequested(); }
-                await Task.Yield();
+                try
+                {
+                    string safeVoice = string.IsNullOrWhiteSpace(voice) || voice == "alloy" ? "en-US-AriaNeural" : voice;
+                    string tempMp3 = Path.Combine(Application.temporaryCachePath, $"aria_speech_{Mathf.Abs(text.GetHashCode())}.mp3");
+
+                    string pythonExe = ResolvePythonExecutable();
+                    var psi = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = pythonExe,
+                        Arguments = $"\"{scriptPath}\" \"{EscapeForCmd(text)}\" \"{tempMp3}\" \"{safeVoice}\"",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+
+                    using (var proc = System.Diagnostics.Process.Start(psi))
+                    {
+                        if (proc != null)
+                        {
+                            float watchdogTimeout = Time.realtimeSinceStartup + 8.0f;
+                            while (!proc.HasExited)
+                            {
+                                if (ct.IsCancellationRequested || Time.realtimeSinceStartup > watchdogTimeout)
+                                {
+                                    try { proc.Kill(); } catch { }
+                                    break;
+                                }
+                                await Task.Yield();
+                            }
+
+                            if (File.Exists(tempMp3) && new FileInfo(tempMp3).Length > 500)
+                            {
+                                string fileUri = "file:///" + tempMp3.Replace('\\', '/');
+                                using (var req = UnityWebRequestMultimedia.GetAudioClip(fileUri, AudioType.MPEG))
+                                {
+                                    var op = req.SendWebRequest();
+                                    while (!op.isDone)
+                                    {
+                                        if (ct.IsCancellationRequested) { req.Abort(); ct.ThrowIfCancellationRequested(); }
+                                        await Task.Yield();
+                                    }
+
+                                    if (req.result == UnityWebRequest.Result.Success)
+                                    {
+                                        var clip = DownloadHandlerAudioClip.GetContent(req);
+                                        if (clip != null && clip.length > 0.2f)
+                                        {
+                                            return clip;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[DirectFreeTextToSpeech] Neural TTS error, falling back: {ex.Message}");
+                }
             }
 
-            if (req.result == UnityWebRequest.Result.Success)
+            // 2. Secondary Fallback: Google Translate Neural Voice
+            try
             {
-                return DownloadHandlerAudioClip.GetContent(req);
+                string clean = Regex.Replace(text, @"[\*#`_>\[\]\n\r]", " ").Trim();
+                if (clean.Length > 180) clean = clean.Substring(0, 180);
+
+                string url = $"https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q={UnityWebRequest.EscapeURL(clean)}";
+
+                using (var req = UnityWebRequestMultimedia.GetAudioClip(url, AudioType.MPEG))
+                {
+                    req.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                    req.timeout = 7;
+
+                    var op = req.SendWebRequest();
+                    while (!op.isDone)
+                    {
+                        if (ct.IsCancellationRequested) { req.Abort(); ct.ThrowIfCancellationRequested(); }
+                        await Task.Yield();
+                    }
+
+                    if (req.result == UnityWebRequest.Result.Success)
+                    {
+                        return DownloadHandlerAudioClip.GetContent(req);
+                    }
+                }
             }
+            catch { }
 
             return null;
+        }
+
+        private string ResolvePythonExecutable()
+        {
+            string[] candidates = new string[]
+            {
+                @"C:\Users\satvi\AppData\Local\Programs\Python\Python310\python.exe",
+                @"C:\Program Files\Python310\python.exe",
+                "python.exe",
+                "python"
+            };
+
+            foreach (var path in candidates)
+            {
+                if (File.Exists(path)) return path;
+            }
+            return "python";
+        }
+
+        private string EscapeForCmd(string s)
+        {
+            return s.Replace("\"", "\\\"").Replace("\n", " ").Replace("\r", " ");
         }
     }
 

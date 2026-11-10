@@ -174,58 +174,59 @@ namespace FiveGLab.VoiceAgent
             currentStep = ModuleStep.Module1_Banner_Overview;
             OnStepChanged?.Invoke(currentStep);
 
-            // Zoom camera directly in front of the wall banner and pop it forward
+            // Pop banner forward at professional 6-degree angle and glide camera
             PCInteractionTester.InspectEquipment(EquipmentId.banner);
             yield return new WaitForSeconds(1.0f);
-            CupsBannerDisplay.Instance?.SetPopUpState(true);
             CupsBannerDisplay.Instance?.SetHighlightSection("all");
 
-            yield return SpeakAndWait("Welcome to the 5G VR Laboratory! We are directly beginning with Module 1: 5G Architecture based on CUPS, as standardized in 3GPP Specification 23.214. CUPS stands for Control and User Plane Separation, allowing the control signaling and user data forwarding to scale independently.");
+            yield return SpeakAndWait("Hey there! Welcome to our 5G Virtual Reality Lab. I'm Aria, your interactive lab mentor. To help you truly visualize how next-generation mobile networks work, I've projected our university's CUPS architecture banner right here in front of us as a holographic smart display. Throughout this module, I'll be using dynamic laser outlines and target markers so you can clearly trace how signaling and data split across modern 5G networks. Let's begin with Module 1!");
 
             // Module 1 - Step A: UEs and Access Networks
             currentStep = ModuleStep.Module1_Banner_UE_Access;
             OnStepChanged?.Invoke(currentStep);
             CupsBannerDisplay.Instance?.SetHighlightSection("ue");
-            yield return SpeakAndWait("On the left, notice the diverse User Equipment, spanning IoT sensors, connected autonomous cars, 5G smartphones, and fixed computers. Each demands radically different latency and throughput.");
-
-            CupsBannerDisplay.Instance?.SetHighlightSection("access");
-            yield return SpeakAndWait("These UEs connect through heterogeneous access networks: 5G gNodeB New Radio, legacy 4G eNodeB, untrusted Wi-Fi routed via the N3IWF IPsec gateway, and fixed wireline.");
+            CupsBannerDisplay.Instance?.SetFocusTarget(new Vector3(-0.30f, 0.0f, -0.02f));
+            yield return SpeakAndWait("Look over at the left side, where our cyan laser outline is pulsing. These are our User Equipments and heterogeneous Access Networks. You see, 5G isn't just about faster smartphones; it unifies smart city IoT sensors, connected autonomous cars, and high-speed workstations. Notice how they connect through diverse radios: 5G New Radio, legacy 4G LTE, and even untrusted home Wi-Fi via our secure N3IWF gateway. The graphics highlight this in cyan because this is the access frontier where all user traffic enters our network.");
 
             // Module 1 - Step B: 5G Control Plane (SBA)
             currentStep = ModuleStep.Module1_Banner_ControlPlane;
             OnStepChanged?.Invoke(currentStep);
             CupsBannerDisplay.Instance?.SetHighlightSection("control");
-            yield return SpeakAndWait("Look at the top-right box: the 5G Control Plane. Built on a cloud-native Service-Based Architecture, modular functions like the AMF for mobility, SMF for session management, UDM and AUSF for authentication, and NSSF for network slicing communicate over REST HTTP/2 APIs.");
+            CupsBannerDisplay.Instance?.SetFocusTarget(new Vector3(0.12f, 0.18f, -0.02f));
+            yield return SpeakAndWait("Now, follow the golden laser up to the top box: our 5G Control Plane. I've highlighted this in gold to represent the brain of the network. Standardized in 3GPP Release 15 as a cloud-native Service-Based Architecture, microservice functions like the AMF for device mobility, the SMF for session control, and the UDM for authentication communicate over lightweight REST APIs. Crucially, the control plane only processes signaling—it never carries the heavy user payload data.");
 
             // Module 1 - Step C: 5G User Plane & CUPS
             currentStep = ModuleStep.Module1_Banner_UserPlane_CUPS;
             OnStepChanged?.Invoke(currentStep);
             CupsBannerDisplay.Instance?.SetHighlightSection("user_plane");
-            yield return SpeakAndWait("Below it is the 5G User Plane. Here lies the true power of CUPS: while the SMF centrally manages session rules over the N4 PFCP interface, high-speed User Plane Functions, or UPFs, are distributed directly to the cell site. This enables local breakout into a Local Data Network, cutting round-trip latency to under one millisecond!");
+            CupsBannerDisplay.Instance?.SetFocusTarget(new Vector3(0.12f, -0.20f, -0.02f));
+            yield return SpeakAndWait("Down below, look at the emerald green laser framing our 5G User Plane. Here is the true breakthrough of CUPS—Control and User Plane Separation. While the SMF centrally manages session policies from afar over the N4 interface, lightweight User Plane Functions, or UPFs, are distributed all the way out to the cell edge. This enables local breakout into a Local Data Network, cutting round-trip latency to under one millisecond! That's why real-time robotics and autonomous driving are finally possible.");
 
             // Module 1 Quiz
             currentStep = ModuleStep.Module1_Quiz;
             OnStepChanged?.Invoke(currentStep);
+            CupsBannerDisplay.Instance?.HideFocusTarget();
             currentQuizQuestion = new QuizQuestion
             {
-                question = "In the 5G CUPS architecture, which network function handles data packet forwarding at the edge?",
+                question = "In this CUPS architecture, which edge network function handles user data forwarding and enables that sub-millisecond local breakout?",
                 acceptedKeywords = new[] { "upf", "user plane", "user plane function" },
-                explanation = "The UPF (User Plane Function) forwards user payload data and enables local edge breakout under SMF control."
+                explanation = "The UPF, or User Plane Function, forwards user data packets at the edge under the central session control of the SMF."
             };
-            yield return SpeakAndWait($"Check on Module 1: {currentQuizQuestion.question} Hold [V] to answer!");
-            yield return WaitForAnswerOrTimeout(8f);
+            yield return SpeakAndWait($"Quick check on Module 1! {currentQuizQuestion.question} Hold down [V] and tell me!");
+            yield return WaitForAnswerOrTimeout(10f);
 
             // Clean up Module 1 visuals before transitioning
             CupsBannerDisplay.Instance?.SetHighlightSection("none");
+            CupsBannerDisplay.Instance?.HideFocusTarget();
             CupsBannerDisplay.Instance?.SetPopUpState(false);
-            yield return new WaitForSeconds(0.6f);
+            yield return new WaitForSeconds(1.0f);
 
             // ==========================================
             // MODULE 2: gNodeB BASE STATION & RADIO
             // ==========================================
             currentStep = ModuleStep.Module2_gNodeB_Intro;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Outstanding! Now let's move to Module 2 to inspect our 3D gNodeB base station antenna!");
+            yield return SpeakAndWait("Great job! Now that we have the architectural blueprint in mind, let's step over to Module 2 to inspect our physical 3D gNodeB base station!");
 
             PCInteractionTester.InspectEquipment(EquipmentId.gnodeb);
             yield return new WaitForSeconds(1.3f);
