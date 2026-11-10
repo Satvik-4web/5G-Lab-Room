@@ -109,6 +109,7 @@ namespace FiveGLab.VoiceAgent
             currentStep = ModuleStep.Completed;
             CupsBannerDisplay.Instance?.SetHighlightSection("none");
             CupsBannerDisplay.Instance?.SetPopUpState(false);
+            VoiceAgentManager.Instance?.HUD?.SetCinemaSubtitleMode(false);
             PCInteractionTester.ExitCurrentInspection();
             OnStepChanged?.Invoke(currentStep);
 
@@ -165,6 +166,7 @@ namespace FiveGLab.VoiceAgent
             if (VoiceAgentManager.Instance != null)
             {
                 VoiceAgentManager.Instance.SetState(AgentState.Touring);
+                VoiceAgentManager.Instance.HUD?.SetCinemaSubtitleMode(true);
             }
 
             // ==========================================
@@ -315,6 +317,7 @@ namespace FiveGLab.VoiceAgent
             OnStepChanged?.Invoke(currentStep);
             if (VoiceAgentManager.Instance != null)
             {
+                VoiceAgentManager.Instance.HUD?.SetCinemaSubtitleMode(false);
                 VoiceAgentManager.Instance.SetState(AgentState.Idle);
             }
         }

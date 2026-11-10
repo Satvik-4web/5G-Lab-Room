@@ -34,6 +34,9 @@ namespace FiveGLab.VoiceAgent
         private Coroutine subtitleFadeRoutine;
         private string activeUserQuery = "";
         private Vector3 followVelocity;
+        private bool isCinemaSubtitleMode = false;
+
+        public bool IsCinemaSubtitleMode => isCinemaSubtitleMode;
 
         private float[] audioSamples = new float[128];
         private float smoothedVoiceAmp = 0f;
@@ -122,11 +125,76 @@ namespace FiveGLab.VoiceAgent
             subtitleFadeRoutine = StartCoroutine(ClearSubtitleAfterDelay(16f));
         }
 
+        public void SetCinemaSubtitleMode(bool enabled)
+        {
+            isCinemaSubtitleMode = enabled;
+            if (avatarOrb != null) avatarOrb.gameObject.SetActive(!enabled);
+            if (topAccentLine != null) topAccentLine.enabled = !enabled;
+            if (levelMeterBar != null) levelMeterBar.enabled = !enabled;
+            if (statusText != null) statusText.enabled = !enabled;
+
+            if (waveBars != null)
+            {
+                for (int i = 0; i < waveBars.Length; i++)
+                {
+                    if (waveBars[i] != null) waveBars[i].gameObject.SetActive(!enabled);
+                }
+            }
+
+            if (hudRoot != null)
+            {
+                var rect = hudRoot.GetComponent<RectTransform>();
+                if (rect != null)
+                {
+                    if (enabled)
+                    {
+                        rect.sizeDelta = new Vector2(760, 68);
+                        if (backgroundImage != null) backgroundImage.color = new Color(0.04f, 0.06f, 0.10f, 0.82f);
+                        if (subtitleText != null)
+                        {
+                            subtitleText.fontSize = 17;
+                            subtitleText.alignment = TextAlignmentOptions.Center;
+                            var sRect = subtitleText.GetComponent<RectTransform>();
+                            if (sRect != null)
+                            {
+                                sRect.anchorMin = Vector2.zero;
+                                sRect.anchorMax = Vector2.one;
+                                sRect.offsetMin = new Vector2(16, 6);
+                                sRect.offsetMax = new Vector2(-16, -6);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        rect.sizeDelta = new Vector2(650, 150);
+                        if (backgroundImage != null) backgroundImage.color = new Color(0.04f, 0.06f, 0.10f, 0.92f);
+                        if (subtitleText != null)
+                        {
+                            subtitleText.fontSize = 14;
+                            subtitleText.alignment = TextAlignmentOptions.TopLeft;
+                            var sRect = subtitleText.GetComponent<RectTransform>();
+                            if (sRect != null)
+                            {
+                                sRect.anchorMin = new Vector2(0, 0.06f);
+                                sRect.anchorMax = new Vector2(1, 0.74f);
+                                sRect.offsetMin = new Vector2(18, 0);
+                                sRect.offsetMax = new Vector2(-18, 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         public void ShowSubtitle(string text)
         {
             if (subtitleText == null) return;
 
-            if (!string.IsNullOrEmpty(activeUserQuery))
+            if (isCinemaSubtitleMode)
+            {
+                subtitleText.text = $"<color=#00E5FF><b>ARIA:</b></color> <color=#F8FAFC>\"{text}\"</color>";
+            }
+            else if (!string.IsNullOrEmpty(activeUserQuery))
             {
                 subtitleText.text = $"<color=#8AB4F8><b>YOU:</b></color> <color=#CBD5E1>\"{activeUserQuery}\"</color>\n<color=#00E5FF><b>ARIA:</b></color> <color=#FFFFFF>{text}</color>";
             }
@@ -136,7 +204,7 @@ namespace FiveGLab.VoiceAgent
             }
 
             if (subtitleFadeRoutine != null) StopCoroutine(subtitleFadeRoutine);
-            subtitleFadeRoutine = StartCoroutine(ClearSubtitleAfterDelay(16f));
+            subtitleFadeRoutine = StartCoroutine(ClearSubtitleAfterDelay(isCinemaSubtitleMode ? 24f : 16f));
         }
 
         public void ClearDialogue()
@@ -158,7 +226,9 @@ namespace FiveGLab.VoiceAgent
             if (Camera.main != null && hudRoot != null)
             {
                 Transform cam = Camera.main.transform;
-                Vector3 targetPos = cam.position + cam.forward * forwardDistance + cam.up * verticalOffset;
+                float currentVOffset = isCinemaSubtitleMode ? -0.40f : verticalOffset;
+                float currentFDistance = isCinemaSubtitleMode ? 1.25f : forwardDistance;
+                Vector3 targetPos = cam.position + cam.forward * currentFDistance + cam.up * currentVOffset;
                 Quaternion targetRot = Quaternion.LookRotation(targetPos - cam.position);
 
                 hudRoot.transform.position = Vector3.SmoothDamp(hudRoot.transform.position, targetPos, ref followVelocity, 0.10f);

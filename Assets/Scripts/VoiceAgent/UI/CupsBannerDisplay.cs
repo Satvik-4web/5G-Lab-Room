@@ -103,17 +103,17 @@ namespace FiveGLab.VoiceAgent
 
             // 2. Zone 1: UE & Heterogeneous Access Network (Left Side)
             lineUE = CreateOutlineLine("Outline_UE_Access",
-                -0.485f, -0.05f, -0.47f, 0.42f, -0.018f,
+                -0.488f, -0.104f, -0.476f, 0.358f, -0.018f,
                 colCyan, 0.015f, unlitShader);
 
             // 3. Zone 2: 5G Control Plane SBA (Top Right)
             lineControl = CreateOutlineLine("Outline_ControlPlane",
-                -0.05f, 0.485f, 0.02f, 0.42f, -0.018f,
+                -0.095f, 0.488f, -0.037f, 0.358f, -0.018f,
                 colGold, 0.015f, unlitShader);
 
             // 4. Zone 3: 5G User Plane & Distributed UPFs (Bottom Right)
             lineUserPlane = CreateOutlineLine("Outline_UserPlane",
-                -0.05f, 0.485f, -0.47f, 0.02f, -0.018f,
+                -0.095f, 0.488f, -0.476f, -0.057f, -0.018f,
                 colGreen, 0.015f, unlitShader);
         }
 

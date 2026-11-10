@@ -144,6 +144,9 @@ public class PCInteractionTester : MonoBehaviour
 
     public void ShowPopupUI()
     {
+        // Never spawn 3D popup label cards over the banner display (keep it clean & cinematic)
+        if (AssociatedEquipmentId == EquipmentId.banner) return;
+
         if (interactableLabel != null && PopupUIManager.Instance != null)
         {
             PopupUIManager.Instance.ShowPopup(interactableLabel.objectName, interactableLabel.objectDescription, transform);

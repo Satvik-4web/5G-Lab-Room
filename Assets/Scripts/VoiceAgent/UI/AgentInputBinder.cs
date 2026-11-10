@@ -255,6 +255,10 @@ namespace FiveGLab.VoiceAgent
         {
             if (manager == null) return;
 
+            // When tour is active or inspecting the 5G banner, remove all AI menu overlays for clean cinematic view
+            if (GuidedTourController.Instance != null && GuidedTourController.Instance.IsTourActive) return;
+            if (LabContext.CurrentInspected == EquipmentId.banner) return;
+
             var mic = manager.GetComponentInChildren<MicrophoneCapture>();
             string micName = mic != null ? mic.GetFriendlyDeviceName() : "Mic";
 
