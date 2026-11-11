@@ -67,10 +67,10 @@ namespace FiveGLab.VoiceAgent
                 wallRestRotation = Quaternion.Euler(0f, 90f, 0f);
             }
 
-            // Smoothly floats 0.55m forward off the wall towards the room (-X)
-            poppedPosition = wallRestPosition + new Vector3(-0.55f, -0.15f, 0f);
+            // Pops cleanly forward into the open room aisle (X = 4.80m), completely in front of all desks and equipment!
+            poppedPosition = new Vector3(4.80f, 1.95f, -1.80f);
             // Parallel presentation angle: perfectly facing the student, zero distortion
-            poppedRotation = wallRestRotation;
+            poppedRotation = Quaternion.Euler(0f, 90f, 0f);
 
             transform.localScale = bannerScale;
             transform.position = wallRestPosition;

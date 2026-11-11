@@ -99,6 +99,18 @@ namespace FiveGLab.VoiceAgent
             isWaitingForQuizAnswer = false;
         }
 
+        private GameObject cachedGNodeB;
+        private GameObject cachedPC;
+
+        private void SetObscuringEquipmentVisible(bool visible)
+        {
+            if (cachedGNodeB == null) cachedGNodeB = GameObject.Find("gNodeB (Base Station)");
+            if (cachedPC == null) cachedPC = GameObject.Find("PC");
+
+            if (cachedGNodeB != null) cachedGNodeB.SetActive(visible);
+            if (cachedPC != null) cachedPC.SetActive(visible);
+        }
+
         public void EndTour()
         {
             if (tourRoutine != null)
@@ -107,6 +119,7 @@ namespace FiveGLab.VoiceAgent
                 tourRoutine = null;
             }
             currentStep = ModuleStep.Completed;
+            SetObscuringEquipmentVisible(true);
             CupsBannerDisplay.Instance?.SetHighlightSection("none");
             CupsBannerDisplay.Instance?.SetPopUpState(false);
             VoiceAgentManager.Instance?.HUD?.SetCinemaSubtitleMode(false);
@@ -176,12 +189,15 @@ namespace FiveGLab.VoiceAgent
             currentStep = ModuleStep.Module1_Banner_Overview;
             OnStepChanged?.Invoke(currentStep);
 
-            // Pop banner forward at professional 6-degree angle and glide camera
+            // Temporarily hide gNodeB and PC so they never obscure the banner presentation
+            SetObscuringEquipmentVisible(false);
+
+            // Pop banner forward into open aisle and glide camera for crystal-clear view
             PCInteractionTester.InspectEquipment(EquipmentId.banner);
             yield return new WaitForSeconds(1.0f);
             CupsBannerDisplay.Instance?.SetHighlightSection("all");
 
-            yield return SpeakAndWait("Hey there! Welcome to our 5G Virtual Reality Lab. I'm Aria, your interactive lab mentor. On the wall in front of us is our university's official 5G Architecture poster, based on Control and User Plane Separation, or CUPS. Throughout this module, I'll be using laser outlines and target markers so you can clearly trace how signaling and data split across next-generation networks. Let's begin with Module 1!");
+            yield return SpeakAndWait("Hey there! Welcome to our 5G Virtual Reality Lab. I'm Aria, your interactive lab mentor. I've brought up our university's official 5G Architecture poster right in front of us as an interactive smart display, based on Control and User Plane Separation, or CUPS. Throughout this module, I'll be using laser outlines and target markers so you can clearly trace how signaling and data split across next-generation networks. Let's begin with Module 1!");
 
             // Module 1 - Step A: UEs and Access Networks
             currentStep = ModuleStep.Module1_Banner_UE_Access;
@@ -222,6 +238,9 @@ namespace FiveGLab.VoiceAgent
             CupsBannerDisplay.Instance?.HideFocusTarget();
             CupsBannerDisplay.Instance?.SetPopUpState(false);
             yield return new WaitForSeconds(1.0f);
+
+            // Re-activate physical lab equipment for Module 2 hands-on inspection
+            SetObscuringEquipmentVisible(true);
 
             // ==========================================
             // MODULE 2: gNodeB BASE STATION & RADIO
