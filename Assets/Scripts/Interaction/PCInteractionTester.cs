@@ -89,6 +89,13 @@ public class PCInteractionTester : MonoBehaviour
 
     void OnMouseEnter()
     {
+        // Suppress hover popups during guided tour lectures so nothing clutters the visual experience!
+        if (FiveGLab.VoiceAgent.GuidedTourController.Instance != null &&
+            FiveGLab.VoiceAgent.GuidedTourController.Instance.IsTourActive)
+        {
+            return;
+        }
+
         if (interactableLabel != null && PopupUIManager.Instance != null && !isZoomed)
         {
             PopupUIManager.Instance.ShowPopup(interactableLabel.objectName, interactableLabel.objectDescription, transform);
@@ -121,6 +128,11 @@ public class PCInteractionTester : MonoBehaviour
                 currentZoomedInstance.CloseUI();
                 currentZoomedInstance.isZoomed = false;
                 currentZoomedInstance = null;
+            }
+
+            if (id == EquipmentId.banner && PopupUIManager.Instance != null)
+            {
+                PopupUIManager.Instance.HidePopup();
             }
 
             if (!tester.isZoomed)
@@ -237,13 +249,13 @@ public class PCInteractionTester : MonoBehaviour
 
                 if (AssociatedEquipmentId == EquipmentId.banner)
                 {
-                    // Perfectly frame the professionally angled 5G CUPS smart board at standing eye level
-                    Vector3 desiredCameraPos = new Vector3(2.90f, 1.85f, -1.80f);
+                    // Perfectly frame the 5G CUPS architecture banner at standing eye level (3.2m distance)
+                    Vector3 desiredCameraPos = new Vector3(3.20f, 2.10f, -1.80f);
                     Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
                     targetOriginPos = desiredCameraPos - cameraLocalOffset;
 
-                    // 3-degree downward pitch looks directly perpendicular to the 6-degree tilted presentation board
-                    Quaternion desiredCameraRot = Quaternion.Euler(3.0f, 90f, 0f);
+                    // Straightforward parallel view directly facing the banner into the room
+                    Quaternion desiredCameraRot = Quaternion.Euler(0f, 90f, 0f);
                     targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
                 }
                 else

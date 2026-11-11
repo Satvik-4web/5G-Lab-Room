@@ -33,6 +33,13 @@ public class PopupUIManager : MonoBehaviour
 
     public void ShowPopup(string objName, string objDescription, Transform targetObj)
     {
+        // Suppress 3D popup label cards during guided tour lectures to keep view pristine
+        if (FiveGLab.VoiceAgent.GuidedTourController.Instance != null &&
+            FiveGLab.VoiceAgent.GuidedTourController.Instance.IsTourActive)
+        {
+            return;
+        }
+
         if (popupPanel != null)
         {
             popupPanel.SetActive(true);
@@ -55,9 +62,9 @@ public class PopupUIManager : MonoBehaviour
         if (descriptionText != null) descriptionText.text = objDescription;
     }
 
-    public void HidePopup()
+    public void HidePopup(bool force = false)
     {
-        if (isInspecting) return; // Prevent hiding when zoomed in!
+        if (isInspecting && !force) return;
 
         if (popupPanel != null && popupPanel.activeSelf)
         {

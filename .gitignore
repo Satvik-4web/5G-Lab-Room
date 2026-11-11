@@ -76,4 +76,7 @@ Assets/_Recovery/
 Assets/Screenshots/
 Assets/Screenshots.meta
 Assets/equipments/1_cups_banner_clean.png*
+__pycache__/
+audio_cache/
+compile_check.log
 

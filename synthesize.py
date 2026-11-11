@@ -28,21 +28,29 @@ async def synthesize(text: str, output_path: str, voice: str = DEFAULT_VOICE):
 
     # Check cache by MD5 hash
     text_hash = hashlib.md5(f"{voice}:{cleaned}".encode("utf-8")).hexdigest()
-    cached_file = os.path.join(CACHE_DIR, f"{text_hash}.mp3")
+    cached_mp3 = os.path.join(CACHE_DIR, f"{text_hash}.mp3")
+    cached_wav = os.path.join(CACHE_DIR, f"{text_hash}.wav")
 
-    if os.path.exists(cached_file) and os.path.getsize(cached_file) > 1000:
-        # Copy from cache to target output
-        with open(cached_file, "rb") as src, open(output_path, "wb") as dst:
-            dst.write(src.read())
-        print(f"CACHE_HIT:{output_path}")
-        return
+    # If WAV is requested and exists, return immediately
+    is_wav_requested = output_path.lower().endswith(".wav")
+    target_cache = cached_wav if is_wav_requested else cached_mp3
 
-    # Synthesize via edge-tts with natural speech rate and pitch
-    communicate = edge_tts.Communicate(cleaned, voice, rate="+0%", pitch="+0Hz")
-    await communicate.save(cached_file)
+    if not (os.path.exists(cached_mp3) and os.path.getsize(cached_mp3) > 1000):
+        # Synthesize via edge-tts with natural speech rate and pitch
+        communicate = edge_tts.Communicate(cleaned, voice, rate="+0%", pitch="+0Hz")
+        await communicate.save(cached_mp3)
 
-    # Copy to target
-    with open(cached_file, "rb") as src, open(output_path, "wb") as dst:
+    if is_wav_requested and (not os.path.exists(cached_wav) or os.path.getsize(cached_wav) < 1000):
+        try:
+            import soundfile as sf
+            data, sr = sf.read(cached_mp3)
+            sf.write(cached_wav, data, sr)
+        except Exception as e:
+            # Fallback to copy mp3 if soundfile fails
+            pass
+
+    final_src = cached_wav if (is_wav_requested and os.path.exists(cached_wav)) else cached_mp3
+    with open(final_src, "rb") as src, open(output_path, "wb") as dst:
         dst.write(src.read())
     print(f"SUCCESS:{output_path}")
 

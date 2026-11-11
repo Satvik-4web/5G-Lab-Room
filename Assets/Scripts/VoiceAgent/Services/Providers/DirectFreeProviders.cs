@@ -150,13 +150,13 @@ namespace FiveGLab.VoiceAgent
                 try
                 {
                     string safeVoice = string.IsNullOrWhiteSpace(voice) || voice == "alloy" ? "en-US-AriaNeural" : voice;
-                    string tempMp3 = Path.Combine(Application.temporaryCachePath, $"aria_speech_{Mathf.Abs(text.GetHashCode())}.mp3");
+                    string tempWav = Path.Combine(Application.temporaryCachePath, $"aria_speech_{Mathf.Abs(text.GetHashCode())}.wav");
 
                     string pythonExe = ResolvePythonExecutable();
                     var psi = new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = pythonExe,
-                        Arguments = $"\"{scriptPath}\" \"{EscapeForCmd(text)}\" \"{tempMp3}\" \"{safeVoice}\"",
+                        Arguments = $"\"{scriptPath}\" \"{EscapeForCmd(text)}\" \"{tempWav}\" \"{safeVoice}\"",
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         UseShellExecute = false,
@@ -178,10 +178,10 @@ namespace FiveGLab.VoiceAgent
                                 await Task.Yield();
                             }
 
-                            if (File.Exists(tempMp3) && new FileInfo(tempMp3).Length > 500)
+                            if (File.Exists(tempWav) && new FileInfo(tempWav).Length > 500)
                             {
-                                string fileUri = "file:///" + tempMp3.Replace('\\', '/');
-                                using (var req = UnityWebRequestMultimedia.GetAudioClip(fileUri, AudioType.MPEG))
+                                string fileUri = "file:///" + tempWav.Replace('\\', '/');
+                                using (var req = UnityWebRequestMultimedia.GetAudioClip(fileUri, AudioType.WAV))
                                 {
                                     var op = req.SendWebRequest();
                                     while (!op.isDone)

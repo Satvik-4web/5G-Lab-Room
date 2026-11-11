@@ -18,14 +18,12 @@ namespace FiveGLab.VoiceAgent
         public static CupsBannerDisplay Instance { get; private set; }
 
         [Header("Banner Positioning & Professional Presentation Angle")]
-        [SerializeField] private Vector3 wallRestPosition = new Vector3(7.42f, 2.25f, -1.80f);
-        [SerializeField] private Quaternion wallRestRotation = Quaternion.Euler(0f, 90f, 0f);
+        private Vector3 wallRestPosition;
+        private Quaternion wallRestRotation;
+        private Vector3 poppedPosition;
+        private Quaternion poppedRotation;
 
-        [SerializeField] private Vector3 poppedPosition = new Vector3(5.45f, 1.80f, -1.80f);
-        // Ergonomic 6-degree upward tilt towards the student (leaning back like a premium interactive smart display)
-        [SerializeField] private Quaternion poppedRotation = Quaternion.Euler(-6.0f, 90.0f, 0.0f);
-
-        [SerializeField] private Vector3 bannerScale = new Vector3(3.60f, 1.80f, 1.0f);
+        [SerializeField] private Vector3 bannerScale = new Vector3(3.30f, 2.20f, 1.0f);
         [SerializeField] private float popDuration = 0.85f;
 
         [Header("Cybernetic Laser Colors")]
@@ -57,6 +55,23 @@ namespace FiveGLab.VoiceAgent
         private void Awake()
         {
             if (Instance == null) Instance = this;
+
+            // Preserve natural wall transform from scene
+            wallRestPosition = transform.position;
+            wallRestRotation = transform.rotation;
+
+            // Ensure proper rotation: quad normal faces into room (-X direction, Y=90)
+            // Never allow zero or identity rotation to invert/mirror the Quad!
+            if (wallRestRotation == Quaternion.identity || Mathf.Abs(wallRestRotation.y) < 0.1f)
+            {
+                wallRestRotation = Quaternion.Euler(0f, 90f, 0f);
+            }
+
+            // Smoothly floats 0.55m forward off the wall towards the room (-X)
+            poppedPosition = wallRestPosition + new Vector3(-0.55f, -0.15f, 0f);
+            // Parallel presentation angle: perfectly facing the student, zero distortion
+            poppedRotation = wallRestRotation;
+
             transform.localScale = bannerScale;
             transform.position = wallRestPosition;
             transform.rotation = wallRestRotation;
@@ -73,14 +88,6 @@ namespace FiveGLab.VoiceAgent
 
         private void Update()
         {
-            // Subtle holographic energy field micro-bobbing while popped forward
-            if (isPopped && popRoutine == null)
-            {
-                hoverTime += Time.deltaTime;
-                float verticalHover = Mathf.Sin(hoverTime * 1.6f) * 0.012f;
-                transform.position = poppedPosition + new Vector3(0f, verticalHover, 0f);
-            }
-
             // Smooth focus marker gliding
             if (focusMarkerGO != null && isFocusActive)
             {
@@ -103,17 +110,17 @@ namespace FiveGLab.VoiceAgent
 
             // 2. Zone 1: UE & Heterogeneous Access Network (Left Side)
             lineUE = CreateOutlineLine("Outline_UE_Access",
-                -0.488f, -0.104f, -0.476f, 0.358f, -0.018f,
+                -0.485f, -0.155f, -0.355f, 0.355f, -0.018f,
                 colCyan, 0.015f, unlitShader);
 
             // 3. Zone 2: 5G Control Plane SBA (Top Right)
             lineControl = CreateOutlineLine("Outline_ControlPlane",
-                -0.095f, 0.488f, -0.037f, 0.358f, -0.018f,
+                -0.125f, 0.460f, 0.005f, 0.330f, -0.018f,
                 colGold, 0.015f, unlitShader);
 
             // 4. Zone 3: 5G User Plane & Distributed UPFs (Bottom Right)
             lineUserPlane = CreateOutlineLine("Outline_UserPlane",
-                -0.095f, 0.488f, -0.476f, -0.057f, -0.018f,
+                -0.065f, 0.320f, -0.370f, -0.035f, -0.018f,
                 colGreen, 0.015f, unlitShader);
         }
 
