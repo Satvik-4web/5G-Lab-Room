@@ -101,14 +101,21 @@ namespace FiveGLab.VoiceAgent
 
         private GameObject cachedGNodeB;
         private GameObject cachedPC;
+        private GameObject cachedMEC;
 
-        private void SetObscuringEquipmentVisible(bool visible)
+        private void CacheSceneReferences()
         {
             if (cachedGNodeB == null) cachedGNodeB = GameObject.Find("gNodeB (Base Station)");
             if (cachedPC == null) cachedPC = GameObject.Find("PC");
+            if (cachedMEC == null) cachedMEC = GameObject.Find("Mobile Edge Computing (MEC-Core)");
+        }
 
+        private void SetObscuringEquipmentVisible(bool visible)
+        {
+            CacheSceneReferences();
             if (cachedGNodeB != null) cachedGNodeB.SetActive(visible);
             if (cachedPC != null) cachedPC.SetActive(visible);
+            if (cachedMEC != null) cachedMEC.SetActive(visible);
         }
 
         public void EndTour()
@@ -130,6 +137,16 @@ namespace FiveGLab.VoiceAgent
             {
                 VoiceAgentManager.Instance.SetState(AgentState.Idle);
             }
+        }
+
+        private void OnDestroy()
+        {
+            if (tourRoutine != null)
+            {
+                StopCoroutine(tourRoutine);
+                tourRoutine = null;
+            }
+            SetObscuringEquipmentVisible(true);
         }
 
         public bool SubmitSpokenAnswer(string transcript, out string feedback)
@@ -189,35 +206,36 @@ namespace FiveGLab.VoiceAgent
             currentStep = ModuleStep.Module1_Banner_Overview;
             OnStepChanged?.Invoke(currentStep);
 
-            // Temporarily hide gNodeB and PC so they never obscure the banner presentation
+            // Temporarily hide gNodeB, PC, and MEC so they never obscure the banner presentation
             SetObscuringEquipmentVisible(false);
 
             // Pop banner forward into open aisle and glide camera for crystal-clear view
+            CupsBannerDisplay.Instance?.SetPopUpState(true);
             PCInteractionTester.InspectEquipment(EquipmentId.banner);
             yield return new WaitForSeconds(1.0f);
             CupsBannerDisplay.Instance?.SetHighlightSection("all");
 
-            yield return SpeakAndWait("Hey there! Welcome to our 5G Virtual Reality Lab. I'm Aria, your interactive lab mentor. I've brought up our university's official 5G Architecture poster right in front of us as an interactive smart display, based on Control and User Plane Separation, or CUPS. Throughout this module, I'll be using laser outlines and target markers so you can clearly trace how signaling and data split across next-generation networks. Let's begin with Module 1!");
+            yield return SpeakAndWait("Hey there! Welcome to our 5G Virtual Reality Lab. I'm Aria, your interactive lab mentor. On the wall in front of us is our university's official 5G Architecture poster, based on Control and User Plane Separation, or CUPS. Throughout this module, I'll be using laser outlines and target markers so you can clearly trace how signaling and data split across next-generation networks. Let's begin with Module 1!");
 
             // Module 1 - Step A: UEs and Access Networks
             currentStep = ModuleStep.Module1_Banner_UE_Access;
             OnStepChanged?.Invoke(currentStep);
             CupsBannerDisplay.Instance?.SetHighlightSection("ue");
-            CupsBannerDisplay.Instance?.SetFocusTarget(new Vector3(-0.35f, 0.0f, -0.02f));
+            CupsBannerDisplay.Instance?.SetFocusTarget(new Vector3(-0.315f, -0.065f, -0.02f));
             yield return SpeakAndWait("Look at the left side, where our cyan laser outline is pulsing. Here are the User Equipments and our heterogeneous Access Networks. You see, 5G isn't just for phones; it connects smart city IoT sensors, autonomous connected vehicles, and high-speed enterprise workstations. Notice how they connect through diverse radios: 5G New Radio, legacy 4G LTE, and even untrusted home Wi-Fi via our secure N3IWF gateway.");
 
             // Module 1 - Step B: 5G Control Plane (SBA)
             currentStep = ModuleStep.Module1_Banner_ControlPlane;
             OnStepChanged?.Invoke(currentStep);
             CupsBannerDisplay.Instance?.SetHighlightSection("control");
-            CupsBannerDisplay.Instance?.SetFocusTarget(new Vector3(0.14f, 0.15f, -0.02f));
+            CupsBannerDisplay.Instance?.SetFocusTarget(new Vector3(0.17f, 0.17f, -0.02f));
             yield return SpeakAndWait("Now, follow the golden laser up to the top box: the 5G Control Plane. I've highlighted this in gold to represent the brain of the network. Standardized in 3GPP Release 15 as a cloud-native Service-Based Architecture, microservice functions like the AMF for device mobility, the SMF for session control, and the UDM for authentication communicate over lightweight REST APIs. Crucially, the control plane only handles signaling—it never carries the heavy user payload data.");
 
             // Module 1 - Step C: 5G User Plane & CUPS
             currentStep = ModuleStep.Module1_Banner_UserPlane_CUPS;
             OnStepChanged?.Invoke(currentStep);
             CupsBannerDisplay.Instance?.SetHighlightSection("user_plane");
-            CupsBannerDisplay.Instance?.SetFocusTarget(new Vector3(0.14f, -0.16f, -0.02f));
+            CupsBannerDisplay.Instance?.SetFocusTarget(new Vector3(0.20f, -0.235f, -0.02f));
             yield return SpeakAndWait("Down below, look at the emerald green laser framing the 5G User Plane. Here is the true breakthrough of CUPS—Control and User Plane Separation. While the SMF centrally manages session policies from above over the crimson N4 interface, lightweight User Plane Functions, or UPFs, are distributed all the way out to the cell edge. This enables local breakout into a Local Data Network, cutting latency to under one millisecond! That's why real-time robotics and autonomous driving are finally possible.");
 
             // Module 1 Quiz
