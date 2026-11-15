@@ -64,9 +64,11 @@ namespace FiveGLab.VoiceAgent
         private ModuleStep currentStep = ModuleStep.NotStarted;
         private Coroutine tourRoutine;
         private bool isWaitingForQuizAnswer = false;
+        private bool isWaitingForNextButton = false;
         private QuizQuestion currentQuizQuestion = null;
 
         public bool IsTourActive => currentStep != ModuleStep.NotStarted && currentStep != ModuleStep.Completed;
+        public bool IsWaitingForNextButton => isWaitingForNextButton;
         public ModuleStep CurrentStep => currentStep;
 
         public event Action<ModuleStep> OnStepChanged;
@@ -80,6 +82,7 @@ namespace FiveGLab.VoiceAgent
         private void Start()
         {
             UseCasesBannerDisplay.EnsureInstance();
+            ModuleScreenOverlayNav.EnsureInstance();
 
             if (autoStartModule1OnPlay)
             {
@@ -90,6 +93,7 @@ namespace FiveGLab.VoiceAgent
         private IEnumerator AutoStartRoutine()
         {
             UseCasesBannerDisplay.EnsureInstance();
+            ModuleScreenOverlayNav.EnsureInstance();
 
             // Allow all singletons, VR Origin, and audio systems to initialize cleanly
             yield return new WaitForSeconds(autoStartDelaySeconds);
@@ -108,7 +112,119 @@ namespace FiveGLab.VoiceAgent
 
         public void NextStop()
         {
+            AdvanceToNextModule();
+        }
+
+        public void AdvanceToNextModule()
+        {
+            if (currentStep < ModuleStep.Module2_UseCases_Overview)
+            {
+                AdvanceToModule2();
+            }
+            else if (currentStep < ModuleStep.Module3_gNodeB_Intro)
+            {
+                AdvanceToModule3();
+            }
+            else
+            {
+                isWaitingForQuizAnswer = false;
+                isWaitingForNextButton = false;
+            }
+        }
+
+        public void AdvanceToModule2()
+        {
+            if (currentStep >= ModuleStep.Module2_UseCases_Overview && currentStep <= ModuleStep.Module2_UseCases_Quiz)
+            {
+                Debug.Log("[GuidedTourController] Already in Module 2.");
+                return;
+            }
+
+            Debug.Log("[GuidedTourController] Advancing from Module 1 to Module 2 (5G Use Cases)...");
             isWaitingForQuizAnswer = false;
+            isWaitingForNextButton = false;
+
+            // Stop any in-flight narrative audio and clear dialogue
+            VoiceAgentManager.Instance?.CancelInFlightOperations();
+            VoiceAgentManager.Instance?.GetComponentInChildren<AgentSpeaker>()?.StopSpeaking();
+            VoiceAgentManager.Instance?.HUD?.ClearDialogue();
+
+            // Clean up Module 1 visuals immediately
+            CupsBannerDisplay.Instance?.SetHighlightSection("none");
+            CupsBannerDisplay.Instance?.HideTargetElement();
+            CupsBannerDisplay.Instance?.SetPopUpState(false);
+
+            if (tourRoutine != null)
+            {
+                StopCoroutine(tourRoutine);
+                tourRoutine = null;
+            }
+
+            tourRoutine = StartCoroutine(ResumeTourFromModule2());
+        }
+
+        public void AdvanceToModule3()
+        {
+            if (currentStep >= ModuleStep.Module3_gNodeB_Intro && currentStep <= ModuleStep.Module3_gNodeB_Quiz)
+            {
+                return;
+            }
+
+            Debug.Log("[GuidedTourController] Advancing to Module 3 (gNodeB)...");
+            isWaitingForQuizAnswer = false;
+            isWaitingForNextButton = false;
+
+            VoiceAgentManager.Instance?.CancelInFlightOperations();
+            VoiceAgentManager.Instance?.GetComponentInChildren<AgentSpeaker>()?.StopSpeaking();
+            VoiceAgentManager.Instance?.HUD?.ClearDialogue();
+
+            UseCasesBannerDisplay.Instance?.SetHighlightSection("none");
+            UseCasesBannerDisplay.Instance?.HideTargetElement();
+            UseCasesBannerDisplay.Instance?.SetPopUpState(false);
+            SetObscuringEquipmentVisible(true);
+
+            if (tourRoutine != null)
+            {
+                StopCoroutine(tourRoutine);
+                tourRoutine = null;
+            }
+
+            tourRoutine = StartCoroutine(ResumeTourFromModule3());
+        }
+
+        private IEnumerator ResumeTourFromModule2()
+        {
+            yield return RunModule2Sequence();
+            yield return RunModule3Sequence();
+            yield return RunModule4Sequence();
+            yield return RunModule5Sequence();
+            yield return RunCourseCompletion();
+        }
+
+        private IEnumerator ResumeTourFromModule3()
+        {
+            yield return RunModule3Sequence();
+            yield return RunModule4Sequence();
+            yield return RunModule5Sequence();
+            yield return RunCourseCompletion();
+        }
+
+        private void ShowNextButton(string label, Action onClick)
+        {
+            if (VoiceAgentManager.Instance != null && VoiceAgentManager.Instance.HUD != null)
+            {
+                VoiceAgentManager.Instance.HUD.ShowNextButton(label, onClick);
+            }
+            else
+            {
+                ModuleScreenOverlayNav.EnsureInstance()?.ShowNextButton(label, onClick);
+            }
+        }
+
+        private void HideNextButton()
+        {
+            VoiceAgentManager.Instance?.HUD?.HideNextButton();
+            ModuleScreenOverlayNav.Instance?.HideNextButton();
         }
 
         private GameObject cachedGNodeB;
@@ -137,6 +253,7 @@ namespace FiveGLab.VoiceAgent
                 StopCoroutine(tourRoutine);
                 tourRoutine = null;
             }
+            HideNextButton();
             currentStep = ModuleStep.Completed;
             SetObscuringEquipmentVisible(true);
             CupsBannerDisplay.Instance?.SetHighlightSection("none");
@@ -162,16 +279,29 @@ namespace FiveGLab.VoiceAgent
                 StopCoroutine(tourRoutine);
                 tourRoutine = null;
             }
+            HideNextButton();
             SetObscuringEquipmentVisible(true);
         }
 
         public bool SubmitSpokenAnswer(string transcript, out string feedback)
         {
             feedback = "";
+            string clean = transcript.ToLowerInvariant();
+
+            // Check if user requested next module via speech
+            if (clean.Contains("next") || clean.Contains("continue") || clean.Contains("proceed") || clean.Contains("module 2") || clean.Contains("module two"))
+            {
+                if (currentStep < ModuleStep.Module2_UseCases_Overview)
+                {
+                    AdvanceToModule2();
+                    feedback = "Advancing to Module 2: 5G Use Cases!";
+                    return true;
+                }
+            }
+
             if (!isWaitingForQuizAnswer || currentQuizQuestion == null) return false;
 
             isWaitingForQuizAnswer = false;
-            string clean = transcript.ToLowerInvariant();
             bool correct = false;
 
             if (currentQuizQuestion.acceptedKeywords != null)
@@ -215,6 +345,16 @@ namespace FiveGLab.VoiceAgent
                 VoiceAgentManager.Instance.HUD?.SetCinemaSubtitleMode(true);
             }
 
+            yield return RunModule1Sequence();
+            yield return RunModule2Sequence();
+            yield return RunModule3Sequence();
+            yield return RunModule4Sequence();
+            yield return RunModule5Sequence();
+            yield return RunCourseCompletion();
+        }
+
+        private IEnumerator RunModule1Sequence()
+        {
             // ==========================================
             // MODULE 1: 5G ARCHITECTURE BASED ON CUPS (WALL BANNER)
             // Direct launch: camera immediately glides to the wall banner and pops it forward
@@ -232,6 +372,9 @@ namespace FiveGLab.VoiceAgent
 
             CupsBannerDisplay.Instance?.SetHighlightSection("all");
             CupsBannerDisplay.Instance?.HideTargetElement();
+
+            // Display Next button right away so user can advance anytime
+            ShowNextButton("NEXT: MODULE 2 ➔  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule2());
 
             yield return SpeakAndWait("Hey there! Welcome to our 5G Lab. I'm Aria, and I'll be walking you through the lab today. Right in front of us on the wall is our university's official 5G Architecture poster. It lays out the foundation of modern 5G—called CUPS, or Control and User Plane Separation. Basically, older cellular networks bundled everything into one big bottleneck. In 5G, we completely separated the brain of the network from the muscle that moves data. Let's break it down step-by-step!", "mod_line_0.wav");
 
@@ -281,14 +424,31 @@ namespace FiveGLab.VoiceAgent
             CupsBannerDisplay.Instance?.SetHighlightSection("none");
             CupsBannerDisplay.Instance?.HideTargetElement();
             CupsBannerDisplay.Instance?.SetPopUpState(false);
-            yield return new WaitForSeconds(0.8f);
+            yield return new WaitForSeconds(0.4f);
 
+            // Prompt user with Next button to proceed to Module 2
+            ShowNextButton("NEXT: MODULE 2 ➔  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule2());
+            yield return SpeakAndWait("Great job on Module 1! Click Next or press N whenever you're ready to head over to Module 2.", "mod1_next_prompt.wav");
+
+            // Wait until user clicks Next or presses [N] / [Space]
+            isWaitingForNextButton = true;
+            while (isWaitingForNextButton)
+            {
+                yield return null;
+            }
+        }
+
+        private IEnumerator RunModule2Sequence()
+        {
             // ==========================================
             // MODULE 2: SUMMARY OF 5G USE CASES (WALL BANNER 2)
             // Glide camera to Poster2 and pop it into the open aisle
             // ==========================================
             currentStep = ModuleStep.Module2_UseCases_Overview;
             OnStepChanged?.Invoke(currentStep);
+
+            // Update Next button for Module 3
+            ShowNextButton("NEXT: MODULE 3 ➔  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule3());
 
             UseCasesBannerDisplay.EnsureInstance()?.SetPopUpState(true);
             PCInteractionTester.InspectEquipment(EquipmentId.banner_usecases);
@@ -342,7 +502,10 @@ namespace FiveGLab.VoiceAgent
 
             // Re-activate physical lab equipment for Module 3 hands-on inspection
             SetObscuringEquipmentVisible(true);
+        }
 
+        private IEnumerator RunModule3Sequence()
+        {
             // ==========================================
             // MODULE 3: gNodeB BASE STATION & RADIO
             // ==========================================
@@ -368,7 +531,10 @@ namespace FiveGLab.VoiceAgent
             };
             yield return SpeakAndWait("Quick check on Module 3: What does active beamforming actually do to 5G radio signals? Hold down the V key and tell me!", "mod_line_8.wav");
             yield return WaitForAnswerOrTimeout(8f);
+        }
 
+        private IEnumerator RunModule4Sequence()
+        {
             // ==========================================
             // MODULE 4: MEC-CORE SERVER RACK & EDGE UPF
             // ==========================================
@@ -394,7 +560,10 @@ namespace FiveGLab.VoiceAgent
             };
             yield return SpeakAndWait("Quick check on Module 4: Why do we put MEC servers right at the edge of the network instead of the cloud? Hold down the V key to answer!", "mod_line_11.wav");
             yield return WaitForAnswerOrTimeout(8f);
+        }
 
+        private IEnumerator RunModule5Sequence()
+        {
             // ==========================================
             // MODULE 5: RF SPECTRUM ANALYZER
             // ==========================================
@@ -420,12 +589,16 @@ namespace FiveGLab.VoiceAgent
             };
             yield return SpeakAndWait("Final check on Module 5: What two variables does the spectrum analyzer display on its screen? Hold down the V key and let me know!", "mod_line_14.wav");
             yield return WaitForAnswerOrTimeout(8f);
+        }
 
+        private IEnumerator RunCourseCompletion()
+        {
             // ==========================================
             // RECAP & GRADUATION
             // ==========================================
             currentStep = ModuleStep.RecapAndWrapUp;
             OnStepChanged?.Invoke(currentStep);
+            HideNextButton();
             PCInteractionTester.ExitCurrentInspection();
             yield return new WaitForSeconds(1.1f);
 

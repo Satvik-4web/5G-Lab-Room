@@ -9,6 +9,8 @@ namespace FiveGLab.VoiceAgent
 {
     public class AgentHUD : MonoBehaviour
     {
+        public static AgentHUD Instance { get; private set; }
+
         [Header("Positioning")]
         [SerializeField] private float forwardDistance = 1.15f;
         [SerializeField] private float verticalOffset = -0.35f;
@@ -24,6 +26,13 @@ namespace FiveGLab.VoiceAgent
         [SerializeField] private Image micIconImage;
         [SerializeField] private Image levelMeterBar;
 
+        [Header("Next Button UI")]
+        [SerializeField] private GameObject nextButtonRoot;
+        [SerializeField] private Button nextButton;
+        [SerializeField] private Image nextButtonBg;
+        [SerializeField] private Outline nextButtonOutline;
+        [SerializeField] private TextMeshProUGUI nextButtonText;
+
         [Header("Waveform Visualizer")]
         [SerializeField] private RectTransform[] waveBars;
 
@@ -37,14 +46,18 @@ namespace FiveGLab.VoiceAgent
         private string activeUserQuery = "";
         private Vector3 followVelocity;
         private bool isCinemaSubtitleMode = false;
+        private System.Action onNextClickAction;
+        private bool isNextButtonActive = false;
 
         public bool IsCinemaSubtitleMode => isCinemaSubtitleMode;
+        public bool IsNextButtonActive => isNextButtonActive;
 
         private float[] audioSamples = new float[128];
         private float smoothedVoiceAmp = 0f;
 
         private void Awake()
         {
+            if (Instance == null) Instance = this;
             EnsureUIStructure();
         }
 
@@ -352,6 +365,23 @@ namespace FiveGLab.VoiceAgent
                 hudRoot.transform.rotation = Quaternion.Slerp(hudRoot.transform.rotation, targetRot, Time.deltaTime * smoothFollowSpeed);
             }
 
+            if (canvas != null && canvas.worldCamera == null && Camera.main != null)
+            {
+                canvas.worldCamera = Camera.main;
+            }
+
+            // Animate next button breathing pulse if active
+            if (isNextButtonActive && nextButtonRoot != null && nextButtonRoot.activeSelf)
+            {
+                float pulse = 1.0f + 0.035f * Mathf.Sin(Time.unscaledTime * 4.5f);
+                nextButtonRoot.transform.localScale = Vector3.one * pulse;
+                if (nextButtonOutline != null)
+                {
+                    float glow = 0.65f + 0.35f * Mathf.Sin(Time.unscaledTime * 4.5f);
+                    nextButtonOutline.effectColor = new Color(0f, 0.90f, 1f, glow);
+                }
+            }
+
             AgentState state = VoiceAgentManager.Instance != null ? VoiceAgentManager.Instance.CurrentState : AgentState.Idle;
 
             // 1. Reactive audio RMS calculation
@@ -449,9 +479,14 @@ namespace FiveGLab.VoiceAgent
                 canvasGO.transform.SetParent(transform, false);
                 canvas = canvasGO.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.WorldSpace;
+                if (Camera.main != null) canvas.worldCamera = Camera.main;
                 var scaler = canvasGO.AddComponent<CanvasScaler>();
                 scaler.dynamicPixelsPerUnit = 10f;
                 canvasGO.AddComponent<GraphicRaycaster>();
+            }
+            else if (canvas.worldCamera == null && Camera.main != null)
+            {
+                canvas.worldCamera = Camera.main;
             }
 
             if (hudRoot == null)
@@ -562,6 +597,102 @@ namespace FiveGLab.VoiceAgent
                 orbGO.transform.localPosition = new Vector3(0, 110f, 10f);
                 avatarOrb = orbGO.AddComponent<AgentAvatarOrb>();
             }
+
+            // 8. Next Module Navigation Button (World Space)
+            if (nextButtonRoot == null)
+            {
+                nextButtonRoot = new GameObject("HUD_NextButton");
+                nextButtonRoot.transform.SetParent(hudRoot.transform, false);
+
+                var btnRect = nextButtonRoot.AddComponent<RectTransform>();
+                btnRect.anchorMin = new Vector2(0.5f, 1f);
+                btnRect.anchorMax = new Vector2(0.5f, 1f);
+                btnRect.pivot = new Vector2(0.5f, 0f);
+                btnRect.sizeDelta = new Vector2(280f, 44f);
+                btnRect.anchoredPosition = new Vector2(0f, 14f);
+
+                nextButtonBg = nextButtonRoot.AddComponent<Image>();
+                nextButtonBg.color = new Color(0.03f, 0.06f, 0.12f, 0.94f);
+
+                nextButtonOutline = nextButtonRoot.AddComponent<Outline>();
+                nextButtonOutline.effectColor = new Color(0f, 0.90f, 1f, 0.90f);
+                nextButtonOutline.effectDistance = new Vector2(2f, 2f);
+
+                var shadow = nextButtonRoot.AddComponent<Shadow>();
+                shadow.effectColor = new Color(0f, 0f, 0f, 0.70f);
+                shadow.effectDistance = new Vector2(0f, -3f);
+
+                nextButton = nextButtonRoot.AddComponent<Button>();
+                var colors = nextButton.colors;
+                colors.normalColor = Color.white;
+                colors.highlightedColor = new Color(0.5f, 1f, 1f, 1f);
+                colors.pressedColor = new Color(0f, 0.85f, 1f, 1f);
+                colors.selectedColor = Color.white;
+                nextButton.colors = colors;
+                nextButton.onClick.AddListener(OnNextButtonClicked);
+
+                var textGO = new GameObject("ButtonText");
+                textGO.transform.SetParent(nextButtonRoot.transform, false);
+                var tRect = textGO.AddComponent<RectTransform>();
+                tRect.anchorMin = Vector2.zero;
+                tRect.anchorMax = Vector2.one;
+                tRect.offsetMin = new Vector2(10, 0);
+                tRect.offsetMax = new Vector2(-10, 0);
+
+                nextButtonText = textGO.AddComponent<TextMeshProUGUI>();
+                nextButtonText.fontSize = 15;
+                nextButtonText.fontStyle = FontStyles.Bold;
+                nextButtonText.alignment = TextAlignmentOptions.Center;
+                nextButtonText.color = new Color(0f, 0.95f, 1f, 1f);
+                nextButtonText.text = "NEXT: MODULE 2 ➔  <size=75%><color=#80D8FF>[N]</color></size>";
+
+                nextButtonRoot.SetActive(false);
+            }
+        }
+
+        public void ShowNextButton(string label, System.Action onClick)
+        {
+            EnsureUIStructure();
+            onNextClickAction = onClick;
+            isNextButtonActive = true;
+
+            if (nextButtonRoot != null)
+            {
+                nextButtonRoot.SetActive(true);
+                nextButtonRoot.transform.localScale = Vector3.one;
+            }
+            if (nextButtonText != null)
+            {
+                nextButtonText.text = label;
+            }
+
+            ModuleScreenOverlayNav.EnsureInstance()?.ShowNextButton(label, onClick);
+        }
+
+        public void HideNextButton()
+        {
+            isNextButtonActive = false;
+            onNextClickAction = null;
+
+            if (nextButtonRoot != null)
+            {
+                nextButtonRoot.SetActive(false);
+            }
+
+            ModuleScreenOverlayNav.Instance?.HideNextButton();
+        }
+
+        private void OnNextButtonClicked()
+        {
+            TriggerNext();
+        }
+
+        public void TriggerNext()
+        {
+            if (!isNextButtonActive) return;
+
+            var action = onNextClickAction;
+            action?.Invoke();
         }
     }
 }

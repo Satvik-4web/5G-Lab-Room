@@ -79,6 +79,19 @@ namespace FiveGLab.VoiceAgent
                 CheckQuickKeys();
             }
 
+            // Advance to Next Module with [N] or [Space]
+            bool nPressed = false;
+            if (Keyboard.current != null && (Keyboard.current.nKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame)) nPressed = true;
+            try { if (Input.GetKeyDown(KeyCode.N) || Input.GetKeyDown(KeyCode.Space)) nPressed = true; } catch { }
+
+            if (nPressed && !isTypingOpen)
+            {
+                if (GuidedTourController.Instance != null && GuidedTourController.Instance.IsTourActive)
+                {
+                    GuidedTourController.Instance.AdvanceToNextModule();
+                }
+            }
+
             // Microphone device switch key [M]
             bool mPressed = false;
             if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame) mPressed = true;
