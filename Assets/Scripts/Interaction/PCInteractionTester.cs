@@ -157,7 +157,7 @@ public class PCInteractionTester : MonoBehaviour
     public void ShowPopupUI()
     {
         // Never spawn 3D popup label cards over the banner display (keep it clean & cinematic)
-        if (AssociatedEquipmentId == EquipmentId.banner) return;
+        if (AssociatedEquipmentId == EquipmentId.banner || AssociatedEquipmentId == EquipmentId.banner_usecases) return;
 
         if (interactableLabel != null && PopupUIManager.Instance != null)
         {
@@ -192,6 +192,10 @@ public class PCInteractionTester : MonoBehaviour
             if (AssociatedEquipmentId == EquipmentId.banner)
             {
                 CupsBannerDisplay.Instance?.SetPopUpState(false);
+            }
+            else if (AssociatedEquipmentId == EquipmentId.banner_usecases)
+            {
+                UseCasesBannerDisplay.Instance?.SetPopUpState(false);
             }
 
             StopAllCoroutines();
@@ -258,6 +262,16 @@ public class PCInteractionTester : MonoBehaviour
                     Quaternion desiredCameraRot = Quaternion.Euler(0f, 90f, 0f);
                     targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
                 }
+                else if (AssociatedEquipmentId == EquipmentId.banner_usecases)
+                {
+                    // Perfectly frame the 5G Use Cases banner at standing eye level (2.7m distance, Z=3.10f)
+                    Vector3 desiredCameraPos = new Vector3(2.10f, 1.95f, 3.10f);
+                    Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
+                    targetOriginPos = desiredCameraPos - cameraLocalOffset;
+
+                    Quaternion desiredCameraRot = Quaternion.Euler(0f, 90f, 0f);
+                    targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
+                }
                 else
                 {
                     // Calculate zoom straight in from the camera's current viewing angle
@@ -284,6 +298,10 @@ public class PCInteractionTester : MonoBehaviour
                 if (AssociatedEquipmentId == EquipmentId.banner)
                 {
                     CupsBannerDisplay.Instance?.SetPopUpState(true);
+                }
+                else if (AssociatedEquipmentId == EquipmentId.banner_usecases)
+                {
+                    UseCasesBannerDisplay.Instance?.SetPopUpState(true);
                 }
             }
             else

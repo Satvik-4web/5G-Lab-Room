@@ -11,7 +11,8 @@ namespace FiveGLab.VoiceAgent
         gnodeb = 1,
         mec = 2,
         spectrum = 3,
-        banner = 4
+        banner = 4,
+        banner_usecases = 5
     }
 
     public static class EquipmentIdExtensions
@@ -24,6 +25,7 @@ namespace FiveGLab.VoiceAgent
                 EquipmentId.mec => "mec",
                 EquipmentId.spectrum => "spectrum",
                 EquipmentId.banner => "banner",
+                EquipmentId.banner_usecases => "banner_usecases",
                 _ => "none"
             };
         }
@@ -32,6 +34,7 @@ namespace FiveGLab.VoiceAgent
         {
             if (string.IsNullOrEmpty(id)) return EquipmentId.None;
             string clean = id.Trim().ToLowerInvariant();
+            if (clean.Contains("use case") || clean.Contains("usecase") || clean.Contains("poster2")) return EquipmentId.banner_usecases;
             if (clean.Contains("banner") || clean.Contains("poster") || clean.Contains("cups") || clean.Contains("architecture") || clean.Contains("wall") || clean.Contains("chart")) return EquipmentId.banner;
             if (clean.Contains("gnodeb") || clean.Contains("antenna") || clean.Contains("base")) return EquipmentId.gnodeb;
             if (clean.Contains("mec") || clean.Contains("rack") || clean.Contains("server")) return EquipmentId.mec;
@@ -44,6 +47,7 @@ namespace FiveGLab.VoiceAgent
             return id switch
             {
                 EquipmentId.banner => "5G Architecture & CUPS Wall Banner",
+                EquipmentId.banner_usecases => "Summary of 5G Use Cases Wall Banner",
                 EquipmentId.gnodeb => "gNodeB (5G Base Station)",
                 EquipmentId.mec => "Mobile Edge Computing (MEC-Core)",
                 EquipmentId.spectrum => "RF Spectrum Analyzer",

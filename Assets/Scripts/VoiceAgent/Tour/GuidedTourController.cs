@@ -28,20 +28,27 @@ namespace FiveGLab.VoiceAgent
             Module1_Banner_UserPlane_CUPS,
             Module1_Quiz,
 
-            // MODULE 2: gNodeB Base Station & Massive MIMO Radio
-            Module2_gNodeB_Intro,
-            Module2_gNodeB_Beamforming,
-            Module2_gNodeB_Quiz,
+            // MODULE 2: Summary of 5G Use Cases (Wall Banner 2: eMBB, mMTC, uRLLC)
+            Module2_UseCases_Overview,
+            Module2_UseCases_eMBB,
+            Module2_UseCases_mMTC,
+            Module2_UseCases_uRLLC,
+            Module2_UseCases_Quiz,
 
-            // MODULE 3: Mobile Edge Computing (MEC) Server Rack & Distributed UPF
-            Module3_MEC_Intro,
-            Module3_MEC_LowLatency,
-            Module3_MEC_Quiz,
+            // MODULE 3: gNodeB Base Station & Massive MIMO Radio
+            Module3_gNodeB_Intro,
+            Module3_gNodeB_Beamforming,
+            Module3_gNodeB_Quiz,
 
-            // MODULE 4: RF Spectrum Analyzer & Signal Diagnostics
-            Module4_Spectrum_Intro,
-            Module4_Spectrum_Diagnostics,
-            Module4_Spectrum_Quiz,
+            // MODULE 4: Mobile Edge Computing (MEC) Server Rack & Distributed UPF
+            Module4_MEC_Intro,
+            Module4_MEC_LowLatency,
+            Module4_MEC_Quiz,
+
+            // MODULE 5: RF Spectrum Analyzer & Signal Diagnostics
+            Module5_Spectrum_Intro,
+            Module5_Spectrum_Diagnostics,
+            Module5_Spectrum_Quiz,
 
             // COMPLETION & RECAP
             RecapAndWrapUp,
@@ -72,6 +79,8 @@ namespace FiveGLab.VoiceAgent
 
         private void Start()
         {
+            UseCasesBannerDisplay.EnsureInstance();
+
             if (autoStartModule1OnPlay)
             {
                 StartCoroutine(AutoStartRoutine());
@@ -80,6 +89,8 @@ namespace FiveGLab.VoiceAgent
 
         private IEnumerator AutoStartRoutine()
         {
+            UseCasesBannerDisplay.EnsureInstance();
+
             // Allow all singletons, VR Origin, and audio systems to initialize cleanly
             yield return new WaitForSeconds(autoStartDelaySeconds);
             if (currentStep == ModuleStep.NotStarted)
@@ -129,7 +140,11 @@ namespace FiveGLab.VoiceAgent
             currentStep = ModuleStep.Completed;
             SetObscuringEquipmentVisible(true);
             CupsBannerDisplay.Instance?.SetHighlightSection("none");
+            CupsBannerDisplay.Instance?.HideTargetElement();
             CupsBannerDisplay.Instance?.SetPopUpState(false);
+            UseCasesBannerDisplay.Instance?.SetHighlightSection("none");
+            UseCasesBannerDisplay.Instance?.HideTargetElement();
+            UseCasesBannerDisplay.Instance?.SetPopUpState(false);
             VoiceAgentManager.Instance?.HUD?.SetCinemaSubtitleMode(false);
             PCInteractionTester.ExitCurrentInspection();
             OnStepChanged?.Invoke(currentStep);
@@ -266,27 +281,84 @@ namespace FiveGLab.VoiceAgent
             CupsBannerDisplay.Instance?.SetHighlightSection("none");
             CupsBannerDisplay.Instance?.HideTargetElement();
             CupsBannerDisplay.Instance?.SetPopUpState(false);
+            yield return new WaitForSeconds(0.8f);
+
+            // ==========================================
+            // MODULE 2: SUMMARY OF 5G USE CASES (WALL BANNER 2)
+            // Glide camera to Poster2 and pop it into the open aisle
+            // ==========================================
+            currentStep = ModuleStep.Module2_UseCases_Overview;
+            OnStepChanged?.Invoke(currentStep);
+
+            UseCasesBannerDisplay.EnsureInstance()?.SetPopUpState(true);
+            PCInteractionTester.InspectEquipment(EquipmentId.banner_usecases);
             yield return new WaitForSeconds(1.0f);
 
-            // Re-activate physical lab equipment for Module 2 hands-on inspection
+            UseCasesBannerDisplay.Instance?.SetHighlightSection("all");
+            UseCasesBannerDisplay.Instance?.HideTargetElement();
+
+            yield return SpeakAndWait("Awesome job on Module 1! Now let's slide right over to Module 2 to explore our 5G Use Cases banner. You see, 5G isn't just about faster downloads on our smartphones; the telecom world actually split all human and device communication into three distinct superpowers: eMBB, mMTC, and uRLLC. I'll highlight each tier with our laser frame as we go, so you can follow right along with me. Let's start at the top!", "usecases_line_0.wav");
+
+            // Module 2 - Step A: eMBB (Enhanced Mobile Broadband)
+            currentStep = ModuleStep.Module2_UseCases_eMBB;
+            OnStepChanged?.Invoke(currentStep);
+            UseCasesBannerDisplay.Instance?.SetHighlightSection("embb");
+            UseCasesBannerDisplay.Instance?.SetTargetElement("embb_vr");
+            yield return SpeakAndWait("Up first in electric cyan is eMBB, or Enhanced Mobile Broadband. Think of this as the ultimate superhighway for raw speed and bandwidth. We're talking up to 20 Gigabits per second! Notice the apps highlighted here: it powers lag-free 8K streaming, immersive virtual and augmented reality worlds, and fiber-speed fixed wireless for our homes—even if you're cruising on a high-speed train at 500 kilometers an hour.", "usecases_line_1.wav");
+
+            // Module 2 - Step B: mMTC (Massive Machine Type Communication)
+            currentStep = ModuleStep.Module2_UseCases_mMTC;
+            OnStepChanged?.Invoke(currentStep);
+            UseCasesBannerDisplay.Instance?.SetHighlightSection("mmtc");
+            UseCasesBannerDisplay.Instance?.SetTargetElement("mmtc_smartcities");
+            yield return SpeakAndWait("Next, look at the middle green tier: mMTC, which stands for Massive Machine-Type Communication. If eMBB is a superhighway for fast cars, mMTC is a giant stadium parking lot. It isn't about peak speed; it's engineered to connect up to one million smart devices in a single square kilometer! Imagine city water meters, smart agriculture sensors, and wearable fitness trackers that can quietly run on a single tiny coin battery for more than ten years.", "usecases_line_2.wav");
+
+            // Module 2 - Step C: uRLLC (Ultra-Reliable Low Latency Communication)
+            currentStep = ModuleStep.Module2_UseCases_uRLLC;
+            OnStepChanged?.Invoke(currentStep);
+            UseCasesBannerDisplay.Instance?.SetHighlightSection("urllc");
+            UseCasesBannerDisplay.Instance?.SetTargetElement("urllc_surgery");
+            yield return SpeakAndWait("And down at the bottom in coral red is 5G's most critical superpower: uRLLC, or Ultra-Reliable Low Latency Communication. This is the life-saver. It slashes network delay to under one millisecond with ninety-nine point nine-nine-nine percent reliability! Look at the robotic surgery and autonomous vehicle icons highlighted here: when a surgeon operates on a patient from across the world, or self-driving cars coordinate split-second emergency braking, every microsecond counts.", "usecases_line_3.wav");
+
+            // Module 2 Quiz
+            currentStep = ModuleStep.Module2_UseCases_Quiz;
+            OnStepChanged?.Invoke(currentStep);
+            UseCasesBannerDisplay.Instance?.SetHighlightSection("none");
+            UseCasesBannerDisplay.Instance?.HideTargetElement();
+            currentQuizQuestion = new QuizQuestion
+            {
+                question = "If a surgeon is performing a delicate remote robotic surgery from another city, which of the three 5G pillars makes that life-saving precision possible?",
+                acceptedKeywords = new[] { "urllc", "ultra reliable", "low latency", "ultra-reliable" },
+                explanation = "uRLLC provides sub-millisecond latency and 99.999% reliability essential for real-time robotic surgery and life-critical applications."
+            };
+            yield return SpeakAndWait("Let's do a quick knowledge check for Module 2! If a surgeon is performing a delicate remote robotic surgery from another city, which of the three 5G pillars makes that life-saving precision possible? Hold down the V key and let me know!", "usecases_line_4.wav");
+            yield return WaitForAnswerOrTimeout(10f);
+
+            // Transition from Module 2 to Module 3 physical hardware
+            UseCasesBannerDisplay.Instance?.SetHighlightSection("none");
+            UseCasesBannerDisplay.Instance?.HideTargetElement();
+            UseCasesBannerDisplay.Instance?.SetPopUpState(false);
+            yield return new WaitForSeconds(0.8f);
+
+            // Re-activate physical lab equipment for Module 3 hands-on inspection
             SetObscuringEquipmentVisible(true);
 
             // ==========================================
-            // MODULE 2: gNodeB BASE STATION & RADIO
+            // MODULE 3: gNodeB BASE STATION & RADIO
             // ==========================================
-            currentStep = ModuleStep.Module2_gNodeB_Intro;
+            currentStep = ModuleStep.Module3_gNodeB_Intro;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Spot on! The UPF forwards all the heavy data at the edge. Now that we have the architectural blueprint in mind, let's step over to Module 2 to inspect our physical 5G base station in 3D!", "mod_line_6.wav");
+            yield return SpeakAndWait("Spot on! uRLLC provides the sub-millisecond reaction time and rock-solid reliability critical for robotic surgery. Now that we understand both the network architecture and the use cases, let's step over to Module 3 to inspect our physical 5G base station in 3D!", "usecases_line_5.wav");
 
             PCInteractionTester.InspectEquipment(EquipmentId.gnodeb);
             yield return new WaitForSeconds(1.3f);
 
-            currentStep = ModuleStep.Module2_gNodeB_Beamforming;
+            currentStep = ModuleStep.Module3_gNodeB_Beamforming;
             OnStepChanged?.Invoke(currentStep);
             yield return SpeakAndWait("This is our gNodeB, connecting mobile devices over 5G New Radio. Notice the Massive MIMO antenna array on top—it packs 64 transmit and 64 receive elements. Instead of broadcasting radio signals everywhere like older towers, it uses beamforming to focus radio waves into tight, steerable beams aimed straight at active users. That eliminates interference and gives you blazing fast speeds.", "mod_line_7.wav");
 
-            // Module 2 Quiz
-            currentStep = ModuleStep.Module2_gNodeB_Quiz;
+            // Module 3 Quiz
+            currentStep = ModuleStep.Module3_gNodeB_Quiz;
             OnStepChanged?.Invoke(currentStep);
             currentQuizQuestion = new QuizQuestion
             {
@@ -294,25 +366,25 @@ namespace FiveGLab.VoiceAgent
                 acceptedKeywords = new[] { "focus", "direct", "narrow", "target", "aim", "steer" },
                 explanation = "Beamforming focuses radio wave energy into targeted, narrow beams directed at active user devices."
             };
-            yield return SpeakAndWait("Quick check on Module 2: What does active beamforming actually do to 5G radio signals? Hold down the V key and tell me!", "mod_line_8.wav");
+            yield return SpeakAndWait("Quick check on Module 3: What does active beamforming actually do to 5G radio signals? Hold down the V key and tell me!", "mod_line_8.wav");
             yield return WaitForAnswerOrTimeout(8f);
 
             // ==========================================
-            // MODULE 3: MEC-CORE SERVER RACK & EDGE UPF
+            // MODULE 4: MEC-CORE SERVER RACK & EDGE UPF
             // ==========================================
-            currentStep = ModuleStep.Module3_MEC_Intro;
+            currentStep = ModuleStep.Module4_MEC_Intro;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Awesome! Beamforming focuses radio energy directly at active users. Next up, let's step to Module 3: our Mobile Edge Computing core server rack!", "mod_line_9.wav");
+            yield return SpeakAndWait("Awesome! Beamforming focuses radio energy directly at active users. Next up, let's step to Module 4: our Mobile Edge Computing core server rack!", "mod_line_9.wav");
 
             PCInteractionTester.InspectEquipment(EquipmentId.mec);
             yield return new WaitForSeconds(1.3f);
 
-            currentStep = ModuleStep.Module3_MEC_LowLatency;
+            currentStep = ModuleStep.Module4_MEC_LowLatency;
             OnStepChanged?.Invoke(currentStep);
             yield return SpeakAndWait("Here's our MEC server rack. Remember the UPF and Local Data Network we saw on the banner? This rack is where they actually live! By running high-performance compute and user plane functions right here on-site, we cut out long internet round-trips. That's how we get sub-millisecond response times for real-time AI and robotics.", "mod_line_10.wav");
 
-            // Module 3 Quiz
-            currentStep = ModuleStep.Module3_MEC_Quiz;
+            // Module 4 Quiz
+            currentStep = ModuleStep.Module4_MEC_Quiz;
             OnStepChanged?.Invoke(currentStep);
             currentQuizQuestion = new QuizQuestion
             {
@@ -320,25 +392,25 @@ namespace FiveGLab.VoiceAgent
                 acceptedKeywords = new[] { "latency", "speed", "fast", "closer", "delay", "millisecond", "lag" },
                 explanation = "Placing MEC servers at the edge eliminates backhaul delays and delivers sub-millisecond response times."
             };
-            yield return SpeakAndWait("Quick check on Module 3: Why do we put MEC servers right at the edge of the network instead of the cloud? Hold down the V key to answer!", "mod_line_11.wav");
+            yield return SpeakAndWait("Quick check on Module 4: Why do we put MEC servers right at the edge of the network instead of the cloud? Hold down the V key to answer!", "mod_line_11.wav");
             yield return WaitForAnswerOrTimeout(8f);
 
             // ==========================================
-            // MODULE 4: RF SPECTRUM ANALYZER
+            // MODULE 5: RF SPECTRUM ANALYZER
             // ==========================================
-            currentStep = ModuleStep.Module4_Spectrum_Intro;
+            currentStep = ModuleStep.Module5_Spectrum_Intro;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Exactly—putting compute at the edge kills latency. Finally, let's head over to Module 4 to inspect our precision RF Spectrum Analyzer!", "mod_line_12.wav");
+            yield return SpeakAndWait("Exactly—putting compute at the edge kills latency. Finally, let's head over to Module 5 to inspect our precision RF Spectrum Analyzer!", "mod_line_12.wav");
 
             PCInteractionTester.InspectEquipment(EquipmentId.spectrum);
             yield return new WaitForSeconds(1.3f);
 
-            currentStep = ModuleStep.Module4_Spectrum_Diagnostics;
+            currentStep = ModuleStep.Module5_Spectrum_Diagnostics;
             OnStepChanged?.Invoke(currentStep);
             yield return SpeakAndWait("This is our RF Spectrum Analyzer. It's the ultimate lab diagnostic tool. It captures high-frequency radio waves across Sub-6 and millimeter wave bands, plotting signal amplitude on the vertical axis against frequency on the horizontal axis. That lets us verify signal purity, check bandwidth, and hunt down any rogue interference.", "mod_line_13.wav");
 
-            // Module 4 Quiz
-            currentStep = ModuleStep.Module4_Spectrum_Quiz;
+            // Module 5 Quiz
+            currentStep = ModuleStep.Module5_Spectrum_Quiz;
             OnStepChanged?.Invoke(currentStep);
             currentQuizQuestion = new QuizQuestion
             {
@@ -346,7 +418,7 @@ namespace FiveGLab.VoiceAgent
                 acceptedKeywords = new[] { "power", "amplitude", "frequency", "freq" },
                 explanation = "The spectrum analyzer plots signal power or amplitude on the vertical axis against frequency on the horizontal axis."
             };
-            yield return SpeakAndWait("Final check on Module 4: What two variables does the spectrum analyzer display on its screen? Hold down the V key and let me know!", "mod_line_14.wav");
+            yield return SpeakAndWait("Final check on Module 5: What two variables does the spectrum analyzer display on its screen? Hold down the V key and let me know!", "mod_line_14.wav");
             yield return WaitForAnswerOrTimeout(8f);
 
             // ==========================================
@@ -358,8 +430,8 @@ namespace FiveGLab.VoiceAgent
             yield return new WaitForSeconds(1.1f);
 
             int score = VoiceAgentManager.Instance?.Memory?.QuizScore ?? 0;
-            int total = VoiceAgentManager.Instance?.Memory?.TotalQuizQuestions ?? 4;
-            yield return SpeakAndWait("Fantastic work! You've successfully finished all four modules in our 5G Lab! From the CUPS architecture banner on the wall to the gNodeB, the MEC edge servers, and the Spectrum Analyzer. Whenever you want to explore more or test your knowledge, just hold V and ask me anything!", "mod_line_15.wav");
+            int total = VoiceAgentManager.Instance?.Memory?.TotalQuizQuestions ?? 5;
+            yield return SpeakAndWait("Fantastic work! You have successfully finished all five modules in our 5G Lab! From the CUPS architecture and Use Cases banners on the wall to the gNodeB, the MEC edge servers, and the Spectrum Analyzer. Whenever you want to explore more or test your knowledge, just hold V and ask me anything!", "mod_line_15.wav");
 
             currentStep = ModuleStep.Completed;
             OnStepChanged?.Invoke(currentStep);

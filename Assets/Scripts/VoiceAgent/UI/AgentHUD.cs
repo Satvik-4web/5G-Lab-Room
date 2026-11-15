@@ -242,7 +242,7 @@ namespace FiveGLab.VoiceAgent
 
                 if (isCinemaSubtitleMode)
                 {
-                    subtitleText.text = $"<size=68%><color=#00E5FF><b>✦ ARIA</b></color></size>\n<color=#FFFFFF><b>{chunk}</b></color>";
+                    subtitleText.text = $"<size=68%><color=#00E5FF><b>ARIA</b></color></size>\n<color=#FFFFFF><b>{chunk}</b></color>";
                 }
                 else
                 {
