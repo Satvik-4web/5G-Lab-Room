@@ -99,9 +99,9 @@ namespace FiveGLab.VoiceAgent
 
             if (speaker != null)
             {
-                speaker.OnSentenceStarted += (text) =>
+                speaker.OnSpeechClipStarted += (text, duration) =>
                 {
-                    if (hud != null) hud.ShowSubtitle(text);
+                    if (hud != null) hud.PlayTimedSubtitles(text, duration);
                 };
 
                 speaker.OnSpeakingComplete += () =>
@@ -376,7 +376,7 @@ namespace FiveGLab.VoiceAgent
                 }
                 else
                 {
-                    if (hud != null) hud.ShowSubtitle(text);
+                    if (hud != null) hud.PlayTimedSubtitles(text, naturalReadingDelayMs / 1000f);
                     await Task.Delay(naturalReadingDelayMs);
                     onComplete?.Invoke();
                 }
@@ -384,7 +384,7 @@ namespace FiveGLab.VoiceAgent
             catch (Exception ex)
             {
                 Debug.LogWarning($"[VoiceAgentManager] Narrative speech error: {ex.Message}");
-                if (hud != null) hud.ShowSubtitle(text);
+                if (hud != null) hud.PlayTimedSubtitles(text, naturalReadingDelayMs / 1000f);
                 await Task.Delay(naturalReadingDelayMs);
                 onComplete?.Invoke();
             }

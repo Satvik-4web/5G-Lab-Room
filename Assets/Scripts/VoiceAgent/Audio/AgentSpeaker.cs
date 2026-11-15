@@ -25,6 +25,7 @@ namespace FiveGLab.VoiceAgent
         public bool IsSpeaking => (audioSource != null && audioSource.isPlaying) || speechQueue.Count > 0;
 
         public event Action<string> OnSentenceStarted;
+        public event Action<string, float> OnSpeechClipStarted;
         public event Action OnSpeakingComplete;
 
         private void Awake()
@@ -83,6 +84,7 @@ namespace FiveGLab.VoiceAgent
                 audioSource.clip = item.clip;
                 audioSource.Play();
                 OnSentenceStarted?.Invoke(item.text);
+                OnSpeechClipStarted?.Invoke(item.text, item.clip != null ? item.clip.length : 0f);
 
                 while (audioSource.isPlaying)
                 {
