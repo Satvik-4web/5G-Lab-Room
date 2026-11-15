@@ -144,19 +144,60 @@ namespace FiveGLab.VoiceAgent
             // Stop any equipment audio so voices never clash!
             AgentSpeaker.DuckOtherAudioSources();
 
-            // 1. Primary: Microsoft Azure Neural Voice (AriaNeural) via Python synthesize.py (100% Free, Zero Key)
+            string safeVoice = string.IsNullOrWhiteSpace(voice) || voice == "alloy" || voice == "en-US-AriaNeural" ? "en-US-AvaMultilingualNeural" : voice;
+
+            // 1. Check audio_cache folder directly by hash
+            string cacheDir = @"D:\5G-Lab-Room\audio_cache";
+            if (Directory.Exists(cacheDir))
+            {
+                try
+                {
+                    string clean = Regex.Replace(text, @"<[^>]+>|[\*#`_~]|\[\d\]", " ").Trim();
+                    using (var md5 = System.Security.Cryptography.MD5.Create())
+                    {
+                        byte[] hashBytes = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{safeVoice}:{clean}"));
+                        var sb = new System.Text.StringBuilder();
+                        for (int i = 0; i < hashBytes.Length; i++) sb.Append(hashBytes[i].ToString("x2"));
+                        string textHash = sb.ToString();
+
+                        string cachedWav = Path.Combine(cacheDir, $"{textHash}.wav");
+                        if (File.Exists(cachedWav) && new FileInfo(cachedWav).Length > 1000)
+                        {
+                            string fileUri = "file:///" + cachedWav.Replace('\\', '/');
+                            using (var req = UnityWebRequestMultimedia.GetAudioClip(fileUri, AudioType.WAV))
+                            {
+                                var op = req.SendWebRequest();
+                                while (!op.isDone)
+                                {
+                                    if (ct.IsCancellationRequested) { req.Abort(); ct.ThrowIfCancellationRequested(); }
+                                    await Task.Yield();
+                                }
+                                if (req.result == UnityWebRequest.Result.Success)
+                                {
+                                    var clip = DownloadHandlerAudioClip.GetContent(req);
+                                    if (clip != null && clip.length > 0.2f) return clip;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception) { }
+            }
+
+            // 2. Primary: Microsoft Azure Neural Voice (AvaMultilingualNeural) via Python synthesize.py (100% Free, Zero Key)
             if (File.Exists(scriptPath))
             {
                 try
                 {
-                    string safeVoice = string.IsNullOrWhiteSpace(voice) || voice == "alloy" || voice == "en-US-AriaNeural" ? "en-US-AvaMultilingualNeural" : voice;
                     string tempWav = Path.Combine(Application.temporaryCachePath, $"aria_speech_{Mathf.Abs(text.GetHashCode())}.wav");
+                    string promptFile = Path.Combine(Application.temporaryCachePath, $"aria_prompt_{Mathf.Abs(text.GetHashCode())}.txt");
+                    File.WriteAllText(promptFile, text, System.Text.Encoding.UTF8);
 
                     string pythonExe = ResolvePythonExecutable();
                     var psi = new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = pythonExe,
-                        Arguments = $"\"{scriptPath}\" \"{EscapeForCmd(text)}\" \"{tempWav}\" \"{safeVoice}\"",
+                        Arguments = $"\"{scriptPath}\" \"{promptFile}\" \"{tempWav}\" \"{safeVoice}\"",
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         UseShellExecute = false,
@@ -167,7 +208,7 @@ namespace FiveGLab.VoiceAgent
                     {
                         if (proc != null)
                         {
-                            float watchdogTimeout = Time.realtimeSinceStartup + 8.0f;
+                            float watchdogTimeout = Time.realtimeSinceStartup + 20.0f;
                             while (!proc.HasExited)
                             {
                                 if (ct.IsCancellationRequested || Time.realtimeSinceStartup > watchdogTimeout)

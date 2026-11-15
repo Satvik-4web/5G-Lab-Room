@@ -59,7 +59,12 @@ def main():
         print("Usage: synthesize.py <text> <output_path> [voice]")
         sys.exit(1)
 
-    text = sys.argv[1]
+    text_arg = sys.argv[1]
+    if os.path.isfile(text_arg):
+        with open(text_arg, "r", encoding="utf-8") as f:
+            text = f.read()
+    else:
+        text = text_arg
     output_path = sys.argv[2]
     voice = sys.argv[3] if len(sys.argv) > 3 else DEFAULT_VOICE
 

@@ -2,17 +2,16 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using TMPro;
 
 namespace FiveGLab.VoiceAgent
 {
     /// <summary>
-    /// Professional Holographic Smart-Display & Architecture Callout System for the 5G CUPS Banner (Poster1).
+    /// Professional Holographic Smart-Display & Architecture Graphic System for the 5G CUPS Banner (Poster1).
     /// Features:
-    /// - 100% Unobstructed Aisle Float: Glides to eye-level in the open aisle during Module 1.
-    /// - Precise Element Highlighting: Outlines and adaptive target frames that fit the exact items on the authentic poster.
-    /// - Floating Holographic Callouts: World-space TextMeshPro cards labeling the actual UE icons, Access Network boxes, Control Plane functions, and User Plane UPFs.
-    /// - Zero Distortion: Maintains authentic 3:2 university poster aspect ratio with high-visibility backlighting.
+    /// - 100% Unobstructed Aisle Float: Glides to presenter eye-level in the open aisle during Module 1.
+    /// - Pixel-Accurate Visual Outlines: Outlines align exactly to the authentic university 5G architecture diagram.
+    /// - Dynamic Adaptive Reticle: Accurately highlights specific components (UE icons, radios, AMF/SMF, UPF).
+    /// - Zero Visual Clutter: 100% free of floating 3D text cards; all textual dialogue is handled cleanly by cinematic subtitles.
     /// </summary>
     public class CupsBannerDisplay : MonoBehaviour
     {
@@ -28,11 +27,11 @@ namespace FiveGLab.VoiceAgent
         [SerializeField] private float popDuration = 0.85f;
 
         [Header("Cybernetic Color Palette")]
-        private readonly Color colCyan = new Color(0f, 0.95f, 1f, 1f);        // User Equipment & Access Networks
-        private readonly Color colBlue = new Color(0.2f, 0.65f, 1f, 1f);      // Access Network Radios
-        private readonly Color colGold = new Color(1f, 0.85f, 0.2f, 1f);      // 5G Control Plane (SBA)
-        private readonly Color colGreen = new Color(0.1f, 1f, 0.45f, 1f);     // 5G User Plane & CUPS UPF
-        private readonly Color colFrame = new Color(0.35f, 0.75f, 1f, 0.85f); // Border Frame
+        private readonly Color colCyan = new Color(0f, 0.95f, 1f, 1f);        // User Equipment (Far Left Column)
+        private readonly Color colBlue = new Color(0.2f, 0.65f, 1f, 1f);      // Access Networks (Middle Left Column)
+        private readonly Color colGold = new Color(1f, 0.85f, 0.2f, 1f);      // 5G Control Plane SBA (Top Right Box)
+        private readonly Color colGreen = new Color(0.1f, 1f, 0.45f, 1f);     // 5G User Plane & CUPS UPF (Bottom Right Box)
+        private readonly Color colFrame = new Color(0.35f, 0.75f, 1f, 0.85f); // Outer Border Frame
         private readonly Color colReticle = new Color(1f, 0.25f, 0.85f, 1f);  // Focus Target Bracket
 
         // Section Outlines
@@ -49,14 +48,6 @@ namespace FiveGLab.VoiceAgent
         private Vector4 targetReticleBounds = Vector4.zero;
         private bool isReticleActive = false;
 
-        // Holographic Callout Badge
-        private GameObject calloutRootGO;
-        private GameObject calloutBgQuad;
-        private TextMeshPro calloutTitleTMP;
-        private TextMeshPro calloutBodyTMP;
-        private Vector3 targetCalloutPos = Vector3.zero;
-        private bool isCalloutActive = false;
-
         private Coroutine popRoutine;
         private Coroutine pulseRoutine;
         private string activeSection = "none";
@@ -67,30 +58,30 @@ namespace FiveGLab.VoiceAgent
         // Coordinate dictionary mapping authentic banner elements to local quad bounds: (x0, x1, y0, y1)
         private readonly Dictionary<string, Vector4> elementBounds = new Dictionary<string, Vector4>
         {
-            // 1. User Equipment (UE) Column & Icons
-            { "ue_all",      new Vector4(-0.495f, -0.422f, -0.450f,  0.085f) },
-            { "ue_drone",    new Vector4(-0.495f, -0.425f, -0.055f,  0.035f) },
-            { "ue_car",      new Vector4(-0.495f, -0.425f, -0.180f, -0.090f) },
-            { "ue_phone",    new Vector4(-0.495f, -0.425f, -0.300f, -0.210f) },
-            { "ue_pc",       new Vector4(-0.495f, -0.422f, -0.440f, -0.335f) },
+            // 1. User Equipment (UE) Column & Specific Icons
+            { "ue_all",       new Vector4(-0.482f, -0.370f, -0.420f,  0.285f) },
+            { "ue_drone",     new Vector4(-0.478f, -0.375f,  0.105f,  0.245f) },
+            { "ue_car",       new Vector4(-0.478f, -0.375f, -0.030f,  0.110f) },
+            { "ue_phone",     new Vector4(-0.478f, -0.375f, -0.195f, -0.025f) },
+            { "ue_pc",        new Vector4(-0.478f, -0.375f, -0.410f, -0.190f) },
 
             // 2. Heterogeneous Access Network Column & Radios
-            { "an_all",      new Vector4(-0.360f, -0.158f, -0.450f,  0.085f) },
-            { "an_5g",       new Vector4(-0.360f, -0.160f, -0.070f,  0.030f) },
-            { "an_4g",       new Vector4(-0.360f, -0.160f, -0.190f, -0.090f) },
-            { "an_wifi",     new Vector4(-0.360f, -0.160f, -0.315f, -0.215f) },
-            { "an_fixed",    new Vector4(-0.360f, -0.160f, -0.440f, -0.335f) },
+            { "an_all",       new Vector4(-0.370f, -0.145f, -0.420f,  0.285f) },
+            { "an_5g",        new Vector4(-0.370f, -0.150f,  0.105f,  0.245f) },
+            { "an_4g",        new Vector4(-0.370f, -0.150f, -0.030f,  0.110f) },
+            { "an_wifi",      new Vector4(-0.370f, -0.150f, -0.195f, -0.025f) },
+            { "an_fixed",     new Vector4(-0.370f, -0.150f, -0.410f, -0.190f) },
 
             // 3. 5G Control Plane SBA Functions
-            { "cp_all",      new Vector4(-0.125f,  0.445f, -0.055f,  0.230f) },
-            { "cp_amf_smf",  new Vector4( 0.020f,  0.250f, -0.010f,  0.075f) },
-            { "cp_udm_ausf", new Vector4(-0.040f,  0.265f,  0.115f,  0.200f) },
+            { "cp_all",       new Vector4(-0.128f,  0.455f, -0.060f,  0.280f) },
+            { "cp_amf_smf",   new Vector4(-0.045f,  0.285f,  0.010f,  0.135f) },
+            { "cp_udm_ausf",  new Vector4(-0.060f,  0.300f,  0.130f,  0.250f) },
 
             // 4. 5G User Plane & Distributed UPFs
-            { "up_all",      new Vector4(-0.035f,  0.445f, -0.455f, -0.075f) },
-            { "up_upfs",     new Vector4(-0.030f,  0.330f, -0.330f, -0.095f) },
-            { "up_localdn",  new Vector4( 0.005f,  0.170f, -0.485f, -0.370f) },
-            { "up_centraldn",new Vector4( 0.360f,  0.450f, -0.260f, -0.110f) }
+            { "up_all",       new Vector4(-0.045f,  0.455f, -0.445f, -0.050f) },
+            { "up_upfs",      new Vector4(-0.030f,  0.250f, -0.285f, -0.075f) },
+            { "up_localdn",   new Vector4( 0.005f,  0.170f, -0.430f, -0.290f) },
+            { "up_centraldn", new Vector4( 0.310f,  0.440f, -0.285f, -0.085f) }
         };
 
         private void Awake()
@@ -116,14 +107,12 @@ namespace FiveGLab.VoiceAgent
 
             BuildHighlightOutlines();
             BuildTargetReticle();
-            BuildCalloutBadge();
         }
 
         private void Start()
         {
             SetHighlightSection("none");
             HideTargetElement();
-            HideCallout();
         }
 
         private void Update()
@@ -133,16 +122,6 @@ namespace FiveGLab.VoiceAgent
             {
                 currentReticleBounds = Vector4.Lerp(currentReticleBounds, targetReticleBounds, Time.deltaTime * 9f);
                 UpdateReticleGeometry(currentReticleBounds.x, currentReticleBounds.y, currentReticleBounds.z, currentReticleBounds.w);
-            }
-
-            // Smooth callout position floating
-            if (isCalloutActive && calloutRootGO != null)
-            {
-                calloutRootGO.transform.localPosition = Vector3.Lerp(
-                    calloutRootGO.transform.localPosition,
-                    targetCalloutPos,
-                    Time.deltaTime * 8f
-                );
             }
         }
 
@@ -157,22 +136,22 @@ namespace FiveGLab.VoiceAgent
 
             // 2. Zone 1A: User Equipment (Far Left Column)
             lineUE = CreateOutlineLine("Outline_UE_Column",
-                -0.498f, -0.418f, -0.455f, 0.090f, -0.018f,
+                -0.482f, -0.370f, -0.420f, 0.285f, -0.018f,
                 colCyan, 0.014f, unlitShader);
 
             // 3. Zone 1B: Heterogeneous Access Networks (Middle Left Column)
             lineAccess = CreateOutlineLine("Outline_Access_Column",
-                -0.365f, -0.152f, -0.455f, 0.090f, -0.018f,
+                -0.370f, -0.145f, -0.420f, 0.285f, -0.018f,
                 colBlue, 0.014f, unlitShader);
 
             // 4. Zone 2: 5G Control Plane SBA (Top Right Box)
             lineControl = CreateOutlineLine("Outline_ControlPlane_SBA",
-                -0.128f, 0.450f, -0.058f, 0.235f, -0.018f,
+                -0.128f, 0.455f, -0.060f, 0.280f, -0.018f,
                 colGold, 0.015f, unlitShader);
 
             // 5. Zone 3: 5G User Plane & Distributed UPFs (Bottom Right Box)
             lineUserPlane = CreateOutlineLine("Outline_UserPlane_CUPS",
-                -0.038f, 0.450f, -0.460f, -0.070f, -0.018f,
+                -0.045f, 0.455f, -0.445f, -0.050f, -0.018f,
                 colGreen, 0.015f, unlitShader);
         }
 
@@ -240,89 +219,6 @@ namespace FiveGLab.VoiceAgent
             targetReticleLine.SetPosition(4, new Vector3(x0, y0, z));
         }
 
-        private void BuildCalloutBadge()
-        {
-            var unlitShader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
-
-            calloutRootGO = new GameObject("CalloutBadgeRoot");
-            calloutRootGO.transform.SetParent(transform, false);
-            calloutRootGO.transform.localPosition = new Vector3(0f, 0f, -0.035f);
-            calloutRootGO.transform.localRotation = Quaternion.identity;
-            calloutRootGO.transform.localScale = Vector3.one;
-
-            // Semi-transparent dark glass background backing quad
-            calloutBgQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            calloutBgQuad.name = "CalloutBg";
-            calloutBgQuad.transform.SetParent(calloutRootGO.transform, false);
-            calloutBgQuad.transform.localPosition = new Vector3(0f, 0f, 0.005f);
-            calloutBgQuad.transform.localRotation = Quaternion.identity;
-            calloutBgQuad.transform.localScale = new Vector3(0.36f, 0.22f, 1f);
-
-            var col = calloutBgQuad.GetComponent<Collider>();
-            if (col != null) Destroy(col);
-
-            var mr = calloutBgQuad.GetComponent<MeshRenderer>();
-            if (mr != null)
-            {
-                var bgMat = new Material(unlitShader);
-                bgMat.SetColor("_BaseColor", new Color(0.04f, 0.08f, 0.15f, 0.88f)); // Dark Navy Glass
-                mr.sharedMaterial = bgMat;
-            }
-
-            // Title Text
-            var titleGO = new GameObject("CalloutTitle");
-            titleGO.transform.SetParent(calloutRootGO.transform, false);
-            titleGO.transform.localPosition = new Vector3(0f, 0.07f, -0.008f);
-            calloutTitleTMP = titleGO.AddComponent<TextMeshPro>();
-            calloutTitleTMP.fontSize = 1.35f;
-            calloutTitleTMP.alignment = TextAlignmentOptions.Center;
-            calloutTitleTMP.color = Color.white;
-            calloutTitleTMP.rectTransform.sizeDelta = new Vector2(0.34f, 0.07f);
-
-            // Body Bullet Points
-            var bodyGO = new GameObject("CalloutBody");
-            bodyGO.transform.SetParent(calloutRootGO.transform, false);
-            bodyGO.transform.localPosition = new Vector3(0f, -0.025f, -0.008f);
-            calloutBodyTMP = bodyGO.AddComponent<TextMeshPro>();
-            calloutBodyTMP.fontSize = 0.95f;
-            calloutBodyTMP.alignment = TextAlignmentOptions.TopLeft;
-            calloutBodyTMP.color = new Color(0.92f, 0.95f, 1f, 0.95f);
-            calloutBodyTMP.rectTransform.sizeDelta = new Vector2(0.32f, 0.14f);
-
-            calloutRootGO.SetActive(false);
-        }
-
-        public void ShowCallout(string title, string content, Vector3 localPos, Color accentColor)
-        {
-            if (calloutRootGO == null) return;
-
-            targetCalloutPos = new Vector3(localPos.x, localPos.y, -0.035f);
-            if (!isCalloutActive)
-            {
-                calloutRootGO.transform.localPosition = targetCalloutPos;
-            }
-
-            if (calloutTitleTMP != null)
-            {
-                calloutTitleTMP.text = $"<b>{title}</b>";
-                calloutTitleTMP.color = accentColor;
-            }
-
-            if (calloutBodyTMP != null)
-            {
-                calloutBodyTMP.text = content;
-            }
-
-            isCalloutActive = true;
-            calloutRootGO.SetActive(true);
-        }
-
-        public void HideCallout()
-        {
-            isCalloutActive = false;
-            if (calloutRootGO != null) calloutRootGO.SetActive(false);
-        }
-
         public void SetTargetElement(string elementName)
         {
             if (string.IsNullOrEmpty(elementName) || elementName == "none")
@@ -334,7 +230,6 @@ namespace FiveGLab.VoiceAgent
             string key = elementName.ToLowerInvariant();
             if (elementBounds.TryGetValue(key, out var bounds))
             {
-                // Add padding around the target element
                 float padX = 0.012f;
                 float padY = 0.012f;
                 targetReticleBounds = new Vector4(bounds.x - padX, bounds.y + padX, bounds.z - padY, bounds.w + padY);
@@ -356,7 +251,6 @@ namespace FiveGLab.VoiceAgent
             if (targetReticleGO != null) targetReticleGO.SetActive(false);
         }
 
-        // Backward compatibility for point target reticle
         public void SetFocusTarget(Vector3 localTargetPos)
         {
             float halfW = 0.07f;
@@ -385,7 +279,6 @@ namespace FiveGLab.VoiceAgent
             {
                 SetHighlightSection("none");
                 HideTargetElement();
-                HideCallout();
             }
         }
 
@@ -393,11 +286,12 @@ namespace FiveGLab.VoiceAgent
         {
             activeSection = sectionName != null ? sectionName.ToLowerInvariant() : "none";
 
+            // Only enable the single active section line so the banner remains pristine and legible!
             if (lineFrame != null) lineFrame.enabled = (activeSection == "all");
-            if (lineUE != null) lineUE.enabled = (activeSection == "ue" || activeSection == "all");
-            if (lineAccess != null) lineAccess.enabled = (activeSection == "access" || activeSection == "all");
-            if (lineControl != null) lineControl.enabled = (activeSection == "control" || activeSection == "all");
-            if (lineUserPlane != null) lineUserPlane.enabled = (activeSection == "user_plane" || activeSection == "all");
+            if (lineUE != null) lineUE.enabled = (activeSection == "ue");
+            if (lineAccess != null) lineAccess.enabled = (activeSection == "access");
+            if (lineControl != null) lineControl.enabled = (activeSection == "control");
+            if (lineUserPlane != null) lineUserPlane.enabled = (activeSection == "user_plane");
 
             if (pulseRoutine != null) StopCoroutine(pulseRoutine);
             if (activeSection != "none")

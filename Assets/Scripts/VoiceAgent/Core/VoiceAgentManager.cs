@@ -1,9 +1,11 @@
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace FiveGLab.VoiceAgent
 {
@@ -301,10 +303,15 @@ namespace FiveGLab.VoiceAgent
 
         public void SpeakNarrativeDirect(string text, Action onComplete)
         {
-            _ = SpeakNarrativeDirectAsync(text, onComplete);
+            _ = SpeakNarrativeDirectAsync(text, null, onComplete);
         }
 
-        private async Task SpeakNarrativeDirectAsync(string text, Action onComplete)
+        public void SpeakNarrativeDirect(string text, string cacheClipName, Action onComplete)
+        {
+            _ = SpeakNarrativeDirectAsync(text, cacheClipName, onComplete);
+        }
+
+        private async Task SpeakNarrativeDirectAsync(string text, string cacheClipName, Action onComplete)
         {
             CancelInFlightOperations();
             activeCts = new CancellationTokenSource();
@@ -314,7 +321,49 @@ namespace FiveGLab.VoiceAgent
             try
             {
                 SetState(AgentState.Speaking);
-                AudioClip clip = await ttsService.SynthesizeAsync(text, config.ttsVoice, activeCts.Token);
+
+                AudioClip clip = null;
+
+                // 1. Direct High-Fidelity Audio Cache Check
+                if (!string.IsNullOrEmpty(cacheClipName))
+                {
+                    string[] possiblePaths = new string[]
+                    {
+                        Path.Combine(Application.dataPath, "..", "audio_cache", cacheClipName),
+                        Path.Combine(@"D:\5G-Lab-Room\audio_cache", cacheClipName),
+                        Path.Combine(Application.streamingAssetsPath, cacheClipName)
+                    };
+
+                    foreach (var path in possiblePaths)
+                    {
+                        if (File.Exists(path) && new FileInfo(path).Length > 1000)
+                        {
+                            string fileUri = "file:///" + Path.GetFullPath(path).Replace('\\', '/');
+                            using (var req = UnityWebRequestMultimedia.GetAudioClip(fileUri, AudioType.WAV))
+                            {
+                                var op = req.SendWebRequest();
+                                while (!op.isDone)
+                                {
+                                    if (activeCts.IsCancellationRequested) { req.Abort(); break; }
+                                    await Task.Yield();
+                                }
+
+                                if (req.result == UnityWebRequest.Result.Success)
+                                {
+                                    clip = DownloadHandlerAudioClip.GetContent(req);
+                                    if (clip != null && clip.length > 0.2f) break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Synthesize via TTS Service if not cached
+                if (clip == null)
+                {
+                    clip = await ttsService.SynthesizeAsync(text, config.ttsVoice, activeCts.Token);
+                }
+
                 if (clip != null && speaker != null)
                 {
                     void OnFinish()
