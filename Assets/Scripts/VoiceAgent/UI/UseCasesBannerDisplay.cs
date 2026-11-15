@@ -6,11 +6,11 @@ using UnityEngine;
 namespace FiveGLab.VoiceAgent
 {
     /// <summary>
-    /// Professional Holographic Smart-Display & Highlight Controller for the 5G Use Cases Banner (Poster2).
+    /// Professional Holographic Smart-Display & Highlight Controller for the authentic 5G Use Cases Banner (Poster2).
     /// Features:
-    /// - Unobstructed Aisle Pop-Up: Glides to presenter eye-level in the open aisle during Module 2.
-    /// - Mathematically Aligned Laser Highlights: Frames the 3 ITU-R / 3GPP pillars (eMBB, mMTC, uRLLC).
-    /// - Dynamic Adaptive Reticle: Accurately highlights specific applications (VR, Smart Cities, Remote Surgery, V2X, Specs).
+    /// - Operates directly on the authentic university poster (2..png) on the wall at X=7.44m, Z=3.10m.
+    /// - Mathematically Aligned Laser Highlights: Outlines the 3 authentic ITU-R / 3GPP pillars (eMBB, mMTC, uRLLC).
+    /// - Dynamic Adaptive Reticle: Accurately highlights specific applications and specs in the authentic diagram.
     /// - 100% Clean Presentation: Zero floating 3D text cards; all dialogue is handled cleanly by cinematic video subtitles.
     /// </summary>
     public class UseCasesBannerDisplay : MonoBehaviour
@@ -31,13 +31,13 @@ namespace FiveGLab.VoiceAgent
         }
 
         [Header("Banner Presentation Transform")]
-        private Vector3 wallRestPosition;
-        private Quaternion wallRestRotation;
-        private Vector3 poppedPosition;
-        private Quaternion poppedRotation;
+        private Vector3 wallRestPosition = new Vector3(7.44f, 2.29f, 3.10f);
+        private Quaternion wallRestRotation = Quaternion.Euler(0f, 90f, 0f);
+        private Vector3 poppedPosition = new Vector3(7.15f, 2.29f, 3.10f); // Subtle, natural lift off the wall
+        private Quaternion poppedRotation = Quaternion.Euler(0f, 90f, 0f);
 
-        [SerializeField] private Vector3 bannerScale = new Vector3(3.56f, 2.00f, 1.0f); // 16:9 ratio
-        [SerializeField] private float popDuration = 0.85f;
+        [SerializeField] private Vector3 bannerScale = new Vector3(8.0f, 5.0f, 1.0f); // Authentic wall scale
+        [SerializeField] private float popDuration = 0.65f;
 
         [Header("Cybernetic Color Palette")]
         private readonly Color colEMBB = new Color(0.0f, 0.90f, 1.0f, 1.0f);     // Electric Cyan (High Speed / Bandwidth)
@@ -66,34 +66,26 @@ namespace FiveGLab.VoiceAgent
 
         public bool IsPopped => isPopped;
 
-        // Local Quad coordinates mapping: Vector4(xMin, xMax, yMin, yMax)
+        // Local Quad coordinates aligned to the authentic 2..png diagram: Vector4(xMin, xMax, yMin, yMax)
         private readonly Dictionary<string, Vector4> elementBounds = new Dictionary<string, Vector4>
         {
             // 1. eMBB Tier & Sub-elements (Top Row)
-            { "embb_all",       new Vector4(-0.4896f, 0.4896f,  0.0648f, 0.3102f) },
-            { "embb_label",     new Vector4(-0.4857f, -0.3659f, 0.0741f, 0.3009f) },
-            { "embb_vr",        new Vector4(-0.3646f, -0.1354f, 0.2454f, 0.2940f) },
-            { "embb_video",     new Vector4(-0.1354f,  0.0990f, 0.2454f, 0.2940f) },
-            { "embb_fwa",       new Vector4( 0.0990f,  0.3021f, 0.2454f, 0.2940f) },
-            { "embb_specs",     new Vector4( 0.3021f,  0.4857f, 0.0741f, 0.3009f) },
+            { "embb_all",         new Vector4(-0.1214f,  0.1276f, -0.0074f,  0.0463f) },
+            { "embb_label",       new Vector4(-0.1214f, -0.0750f, -0.0074f,  0.0463f) },
+            { "embb_vr",          new Vector4(-0.0750f,  0.0550f, -0.0056f,  0.0444f) },
+            { "embb_specs",       new Vector4( 0.0550f,  0.1276f, -0.0056f,  0.0444f) },
 
             // 2. mMTC Tier & Sub-elements (Middle Row)
-            { "mmtc_all",       new Vector4(-0.4896f, 0.4896f, -0.1898f, 0.0556f) },
-            { "mmtc_label",     new Vector4(-0.4857f, -0.3659f, -0.1806f, 0.0463f) },
-            { "mmtc_wearables", new Vector4(-0.3646f, -0.1354f, -0.0093f, 0.0394f) },
-            { "mmtc_smartcities", new Vector4(0.0990f,  0.3021f, -0.0093f, 0.0394f) },
-            { "mmtc_health",    new Vector4(-0.3646f, -0.1354f, -0.0741f, -0.0150f) },
-            { "mmtc_industrial", new Vector4(0.0990f,  0.3021f, -0.0741f, -0.0150f) },
-            { "mmtc_specs",     new Vector4( 0.3021f,  0.4857f, -0.1806f, 0.0463f) },
+            { "mmtc_all",         new Vector4(-0.1214f,  0.1276f, -0.0648f, -0.0111f) },
+            { "mmtc_label",       new Vector4(-0.1214f, -0.0750f, -0.0648f, -0.0111f) },
+            { "mmtc_smartcities", new Vector4(-0.0750f,  0.0550f, -0.0630f, -0.0130f) },
+            { "mmtc_specs",       new Vector4( 0.0550f,  0.1276f, -0.0630f, -0.0130f) },
 
             // 3. uRLLC Tier & Sub-elements (Bottom Row)
-            { "urllc_all",      new Vector4(-0.4896f, 0.4896f, -0.4444f, -0.1991f) },
-            { "urllc_label",    new Vector4(-0.4857f, -0.3659f, -0.4352f, -0.2083f) },
-            { "urllc_safety",   new Vector4(-0.3646f, -0.1354f, -0.2639f, -0.2153f) },
-            { "urllc_surgery",  new Vector4(-0.1354f,  0.0990f, -0.2639f, -0.2153f) },
-            { "urllc_v2x",      new Vector4(-0.3646f,  0.0990f, -0.3241f, -0.2755f) },
-            { "urllc_robotics", new Vector4(-0.1354f,  0.0990f, -0.3241f, -0.2755f) },
-            { "urllc_specs",    new Vector4( 0.3021f,  0.4857f, -0.4352f, -0.2083f) }
+            { "urllc_all",        new Vector4(-0.1214f,  0.1276f, -0.1343f, -0.0685f) },
+            { "urllc_label",      new Vector4(-0.1214f, -0.0750f, -0.1343f, -0.0685f) },
+            { "urllc_surgery",    new Vector4(-0.0750f,  0.0550f, -0.1324f, -0.0704f) },
+            { "urllc_specs",      new Vector4( 0.0550f,  0.1276f, -0.1324f, -0.0704f) }
         };
 
         private void Awake()
@@ -108,8 +100,8 @@ namespace FiveGLab.VoiceAgent
                 wallRestRotation = Quaternion.Euler(0f, 90f, 0f);
             }
 
-            // Popped presentation transform: open aisle, eye-level, Z=3.10f
-            poppedPosition = new Vector3(4.80f, 1.95f, 3.10f);
+            // Natural presentation transform: slightly lifted from wall surface
+            poppedPosition = new Vector3(7.15f, wallRestPosition.y, wallRestPosition.z);
             poppedRotation = Quaternion.Euler(0f, 90f, 0f);
 
             transform.localScale = bannerScale;
@@ -132,7 +124,7 @@ namespace FiveGLab.VoiceAgent
             if (isReticleActive && targetReticleLine != null)
             {
                 currentReticleBounds = Vector4.Lerp(currentReticleBounds, targetReticleBounds, Time.deltaTime * 12f);
-                UpdateRectLine(targetReticleLine, currentReticleBounds.x, currentReticleBounds.y, currentReticleBounds.z, currentReticleBounds.w, 0.022f);
+                UpdateRectLine(targetReticleLine, currentReticleBounds.x, currentReticleBounds.y, currentReticleBounds.z, currentReticleBounds.w, 0.018f);
             }
         }
 
@@ -156,18 +148,18 @@ namespace FiveGLab.VoiceAgent
 
         private void BuildHighlightOutlines()
         {
-            lineFrame = CreateOutlineLine("Outline_Frame", colFrame, 0.018f, 0.016f);
-            lineEMBB = CreateOutlineLine("Outline_eMBB", colEMBB, 0.020f, 0.018f);
-            lineMMTC = CreateOutlineLine("Outline_mMTC", colMMTC, 0.020f, 0.018f);
-            lineURLLC = CreateOutlineLine("Outline_uRLLC", colURLLC, 0.020f, 0.018f);
+            lineFrame = CreateOutlineLine("Outline_Frame", colFrame, 0.0035f);
+            lineEMBB = CreateOutlineLine("Outline_eMBB", colEMBB, 0.0040f);
+            lineMMTC = CreateOutlineLine("Outline_mMTC", colMMTC, 0.0040f);
+            lineURLLC = CreateOutlineLine("Outline_uRLLC", colURLLC, 0.0040f);
 
-            // Frame border
-            UpdateRectLine(lineFrame, -0.490f, 0.490f, -0.485f, 0.485f, 0.012f);
+            // Frame border around authentic poster diagram
+            UpdateRectLine(lineFrame, -0.1224f, 0.1281f, -0.1370f, 0.1435f, 0.012f);
 
-            // 3 Tier Outlines
-            UpdateRectLine(lineEMBB, -0.4896f, 0.4896f, 0.0648f, 0.3102f, 0.015f);
-            UpdateRectLine(lineMMTC, -0.4896f, 0.4896f, -0.1898f, 0.0556f, 0.015f);
-            UpdateRectLine(lineURLLC, -0.4896f, 0.4896f, -0.4444f, -0.1991f, 0.015f);
+            // 3 Tier Outlines matching authentic poster
+            UpdateRectLine(lineEMBB, -0.1214f, 0.1276f, -0.0074f, 0.0463f, 0.015f);
+            UpdateRectLine(lineMMTC, -0.1214f, 0.1276f, -0.0648f, -0.0111f, 0.015f);
+            UpdateRectLine(lineURLLC, -0.1214f, 0.1276f, -0.1343f, -0.0685f, 0.015f);
 
             lineFrame.enabled = false;
             lineEMBB.enabled = false;
@@ -187,14 +179,14 @@ namespace FiveGLab.VoiceAgent
             targetReticleLine.useWorldSpace = false;
             targetReticleLine.loop = true;
             targetReticleLine.positionCount = 4;
-            targetReticleLine.startWidth = 0.022f;
-            targetReticleLine.endWidth = 0.022f;
+            targetReticleLine.startWidth = 0.0045f;
+            targetReticleLine.endWidth = 0.0045f;
             targetReticleLine.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             targetReticleLine.receiveShadows = false;
             targetReticleLine.enabled = false;
         }
 
-        private LineRenderer CreateOutlineLine(string name, Color color, float startW, float zOffset)
+        private LineRenderer CreateOutlineLine(string name, Color color, float startW)
         {
             GameObject go = new GameObject(name);
             go.transform.SetParent(transform, false);
@@ -216,8 +208,6 @@ namespace FiveGLab.VoiceAgent
         private void UpdateRectLine(LineRenderer lr, float xMin, float xMax, float yMin, float yMax, float zOffset)
         {
             if (lr == null) return;
-            // Local Quad face points in +Z or -Z depending on mesh. For Quad, -Z is facing front when flipped, or +Z.
-            // In CupsBannerDisplay, zOffset is -0.015f towards the viewer.
             float z = -Mathf.Abs(zOffset);
             lr.SetPosition(0, new Vector3(xMin, yMin, z));
             lr.SetPosition(1, new Vector3(xMin, yMax, z));

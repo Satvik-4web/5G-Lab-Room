@@ -264,8 +264,8 @@ public class PCInteractionTester : MonoBehaviour
                 }
                 else if (AssociatedEquipmentId == EquipmentId.banner_usecases)
                 {
-                    // Perfectly frame the 5G Use Cases banner at standing eye level (2.7m distance, Z=3.10f)
-                    Vector3 desiredCameraPos = new Vector3(2.10f, 1.95f, 3.10f);
+                    // Perfectly frame the 5G Use Cases banner at standing eye level directly facing the wall
+                    Vector3 desiredCameraPos = new Vector3(3.60f, 2.29f, 3.10f);
                     Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
                     targetOriginPos = desiredCameraPos - cameraLocalOffset;
 
