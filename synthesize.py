@@ -9,7 +9,7 @@ import edge_tts
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "audio_cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-DEFAULT_VOICE = "en-US-AriaNeural"  # Microsoft Azure Neural Voice - Aria (Expressive, Human, Warm)
+DEFAULT_VOICE = "en-US-AvaMultilingualNeural"  # Microsoft Azure Neural Voice - Ava (Human, Expressive, Warm, Conversational)
 
 def clean_text_for_speech(raw: str) -> str:
     # Clean up formatting artifacts, brackets, tags

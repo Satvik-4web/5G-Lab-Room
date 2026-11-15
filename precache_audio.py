@@ -4,27 +4,60 @@ import sys
 from synthesize import synthesize
 
 lines = [
-    "Hey there! Welcome to our 5G Virtual Reality Lab. I'm Aria, your interactive lab mentor. On the wall in front of us is our university's official 5G Architecture poster, based on Control and User Plane Separation, or CUPS. Throughout this module, I'll be using laser outlines and target markers so you can clearly trace how signaling and data split across next-generation networks. Let's begin with Module 1!",
-    "Look at the left side, where our cyan laser outline is pulsing. Here are the User Equipments and our heterogeneous Access Networks. You see, 5G isn't just for phones; it connects smart city IoT sensors, autonomous connected vehicles, and high-speed enterprise workstations. Notice how they connect through diverse radios: 5G New Radio, legacy 4G LTE, and even untrusted home Wi-Fi via our secure N3IWF gateway.",
-    "Now, follow the golden laser up to the top box: the 5G Control Plane. I've highlighted this in gold to represent the brain of the network. Standardized in 3GPP Release 15 as a cloud-native Service-Based Architecture, microservice functions like the AMF for device mobility, the SMF for session control, and the UDM for authentication communicate over lightweight REST APIs. Crucially, the control plane only handles signaling—it never carries the heavy user payload data.",
-    "Down below, look at the emerald green laser framing the 5G User Plane. Here is the true breakthrough of CUPS—Control and User Plane Separation. While the SMF centrally manages session policies from above over the crimson N4 interface, lightweight User Plane Functions, or UPFs, are distributed all the way out to the cell edge. This enables local breakout into a Local Data Network, cutting latency to under one millisecond! That's why real-time robotics and autonomous driving are finally possible.",
-    "Quick check on Module 1! In this CUPS architecture, which edge network function handles user data forwarding and enables that sub-millisecond local breakout? Hold down the V key and tell me!",
-    "Great job! Now that we have the architectural blueprint in mind, let's step over to Module 2 to inspect our physical 3D gNodeB base station!",
-    "This is our gNodeB, connecting mobile UEs over 5G New Radio. It features Massive MIMO with 64 transmit and 64 receive elements. Using active beamforming, it shapes radio waves into narrow, high-gain beams directed straight at active users, drastically eliminating interference.",
-    "Check on Module 2: What does active beamforming do to 5G radio signals? Hold the V key and tell me!",
-    "Next, let's advance to Module 3: the Mobile Edge Computing core server rack!",
-    "This is the MEC server rack. As we saw on the CUPS banner, placing baseband units and a localized UPF right here at the edge delivers processing latency under one millisecond. This ultra-reliable low latency is mandatory for tele-surgery, robotics, and self-driving cars.",
-    "Check on Module 3: Why do we place MEC servers at the edge of the network? Hold the V key to answer!",
-    "Finally, let's step over to Module 4: our RF Spectrum Analyzer!",
-    "This is the high-frequency RF Spectrum Analyzer. It captures signals across Sub-6 GHz and mmWave bands, visualizing spectral power density, constellation diagrams, and EVM to verify that our transmissions comply with 3GPP standards.",
-    "Final check on Module 4: What critical metric does the spectrum analyzer measure to verify transmission quality? Hold the V key and answer!",
-    "Congratulations! You have completed all four modules of our 5G VR Laboratory! From the CUPS architecture banner on the wall to the gNodeB, the MEC edge servers, and the Spectrum Analyzer. Feel free to ask me anything about 5G anytime."
+    # Module 1 - Line 0: Introduction to the Lab & 5G CUPS Banner
+    "Hey there! Welcome to our 5G Lab. I'm Aria, and I'll be walking you through the lab today. Right in front of us on the wall is our university's official 5G Architecture poster. It lays out the foundation of modern 5G—called CUPS, or Control and User Plane Separation. Basically, older cellular networks bundled everything into one big bottleneck. In 5G, we completely separated the brain of the network from the muscle that moves data. Let's break it down step-by-step!",
+
+    # Module 1 - Line 1: User Equipment (UE)
+    "First, let's look at the left column under UE, or User Equipment. 5G isn't just for phones—it connects IoT drones at the top, autonomous self-driving cars, handheld smartphones, and enterprise workstations. Notice how every single device starts its journey right here.",
+
+    # Module 1 - Line 2: Access Network
+    "Right next to the devices is the Access Network column. They connect through 5G New Radio base stations, existing 4G LTE towers, and even home Wi-Fi and wired fiber. Everything plugs into the network through one of these radio links.",
+
+    # Module 1 - Line 3: 5G Control Plane (SBA)
+    "Now, look up at the top box highlighted in gold. That's the 5G Control Plane. Think of this as the brain. You've got the AMF tracking your device as you move around, the SMF setting up your data sessions, and the UDM verifying your SIM. But here's the golden rule of CUPS: this entire top box only handles signaling instructions. It never touches your actual videos, downloads, or user data packets.",
+
+    # Module 1 - Line 4: 5G User Plane & CUPS
+    "Down below, in green, is the 5G User Plane. This is the muscle that carries all your data. Instead of routing traffic all the way to a distant cloud server, 5G distributes these lightweight UPFs right to the edge of the network. See that Local DN icon at the bottom? User data can break out right here to a local server in under one millisecond! That's the secret to zero-lag gaming, real-time robotics, and safe autonomous driving.",
+
+    # Module 1 - Line 5: Module 1 Quiz
+    "Alright, quick check to see if that makes sense! On this poster, which edge function is doing the heavy lifting of forwarding user data so we get that sub-millisecond local speed? Hold down the V key and let me know!",
+
+    # Module 2 - Line 6: Transition to gNodeB
+    "Spot on! The UPF forwards all the heavy data at the edge. Now that we have the architectural blueprint in mind, let's step over to Module 2 to inspect our physical 5G base station in 3D!",
+
+    # Module 2 - Line 7: gNodeB & Beamforming
+    "This is our gNodeB, connecting mobile devices over 5G New Radio. Notice the Massive MIMO antenna array on top—it packs 64 transmit and 64 receive elements. Instead of broadcasting radio signals everywhere like older towers, it uses beamforming to focus radio waves into tight, steerable beams aimed straight at active users. That eliminates interference and gives you blazing fast speeds.",
+
+    # Module 2 - Line 8: Module 2 Quiz
+    "Quick check on Module 2: What does active beamforming actually do to 5G radio signals? Hold down the V key and tell me!",
+
+    # Module 3 - Line 9: Transition to MEC
+    "Awesome! Beamforming focuses radio energy directly at active users. Next up, let's step to Module 3: our Mobile Edge Computing core server rack!",
+
+    # Module 3 - Line 10: MEC Deep Dive
+    "Here's our MEC server rack. Remember the UPF and Local Data Network we saw on the banner? This rack is where they actually live! By running high-performance compute and user plane functions right here on-site, we cut out long internet round-trips. That's how we get sub-millisecond response times for real-time AI and robotics.",
+
+    # Module 3 - Line 11: Module 3 Quiz
+    "Quick check on Module 3: Why do we put MEC servers right at the edge of the network instead of the cloud? Hold down the V key to answer!",
+
+    # Module 4 - Line 12: Transition to Spectrum Analyzer
+    "Exactly—putting compute at the edge kills latency. Finally, let's head over to Module 4 to inspect our precision RF Spectrum Analyzer!",
+
+    # Module 4 - Line 13: Spectrum Analyzer Diagnostics
+    "This is our RF Spectrum Analyzer. It's the ultimate lab diagnostic tool. It captures high-frequency radio waves across Sub-6 and millimeter wave bands, plotting signal amplitude on the vertical axis against frequency on the horizontal axis. That lets us verify signal purity, check bandwidth, and hunt down any rogue interference.",
+
+    # Module 4 - Line 14: Module 4 Quiz
+    "Final check on Module 4: What two variables does the spectrum analyzer display on its screen? Hold down the V key and let me know!",
+
+    # Graduation - Line 15: Graduation & Wrap-Up
+    "Fantastic work! You've successfully finished all four modules in our 5G Lab! From the CUPS architecture banner on the wall to the gNodeB, the MEC edge servers, and the Spectrum Analyzer. Whenever you want to explore more or test your knowledge, just hold V and ask me anything!"
 ]
 
 async def run():
+    voice = "en-US-AvaMultilingualNeural"
     for idx, text in enumerate(lines):
         out_wav = f"D:/5G-Lab-Room/audio_cache/mod_line_{idx}.wav"
-        await synthesize(text, out_wav)
+        await synthesize(text, out_wav, voice=voice)
         print(f"Pre-cached line {idx} -> {out_wav}")
 
 if __name__ == "__main__":

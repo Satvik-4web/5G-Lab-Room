@@ -149,7 +149,7 @@ namespace FiveGLab.VoiceAgent
             {
                 try
                 {
-                    string safeVoice = string.IsNullOrWhiteSpace(voice) || voice == "alloy" ? "en-US-AriaNeural" : voice;
+                    string safeVoice = string.IsNullOrWhiteSpace(voice) || voice == "alloy" || voice == "en-US-AriaNeural" ? "en-US-AvaMultilingualNeural" : voice;
                     string tempWav = Path.Combine(Application.temporaryCachePath, $"aria_speech_{Mathf.Abs(text.GetHashCode())}.wav");
 
                     string pythonExe = ResolvePythonExecutable();

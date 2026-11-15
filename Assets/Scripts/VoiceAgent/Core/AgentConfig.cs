@@ -19,7 +19,7 @@ namespace FiveGLab.VoiceAgent
         public string sttEndpoint = "/stt";
         public string chatEndpoint = "/chat";
         public string ttsEndpoint = "/tts";
-        public string ttsVoice = "alloy";
+        public string ttsVoice = "en-US-AvaMultilingualNeural";
 
         [Header("Voice & Interaction")]
         public KeyCode pttKey = KeyCode.V;
