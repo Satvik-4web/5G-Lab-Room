@@ -34,6 +34,39 @@ namespace FiveGLab.VoiceAgent
         [SerializeField] private Outline nextButtonOutline;
         [SerializeField] private TextMeshProUGUI nextButtonText;
 
+        [Header("Module Dropdown UI")]
+        [SerializeField] private GameObject moduleDropdownRoot;
+        [SerializeField] private Button moduleDropdownBtn;
+        [SerializeField] private Image moduleDropdownBg;
+        [SerializeField] private Outline moduleDropdownOutline;
+        [SerializeField] private TextMeshProUGUI moduleDropdownLabel;
+        [SerializeField] private GameObject moduleMenuPanel;
+        [SerializeField] private TextMeshProUGUI panelHeaderTitle;
+        [SerializeField] private Button[] moduleItemButtons;
+        [SerializeField] private Image[] moduleItemBgs;
+        [SerializeField] private TextMeshProUGUI[] moduleItemTexts;
+
+        private bool isModuleMenuOpen = false;
+        private int currentSelectedModuleIndex = 1;
+
+        private static readonly string[] moduleNames = new string[]
+        {
+            "1. 5G Architecture (CUPS Banner)",
+            "2. Summary of 5G Use Cases",
+            "3. Spectrometer (RF Analyzer)",
+            "4. 5G Antenna (Massive MIMO)",
+            "5. gNodeB Base Station & Core"
+        };
+
+        private static readonly string[] moduleShortTitles = new string[]
+        {
+            "CUPS Architecture",
+            "5G Use Cases",
+            "Spectrometer",
+            "5G Antenna",
+            "gNodeB Base Station"
+        };
+
         [Header("Waveform Visualizer")]
         [SerializeField] private RectTransform[] waveBars;
 
@@ -79,7 +112,33 @@ namespace FiveGLab.VoiceAgent
                 }
             }
 
+            if (GuidedTourController.Instance != null)
+            {
+                GuidedTourController.Instance.OnStepChanged += HandleTourStepChanged;
+            }
+
             UpdateStateVisuals(AgentState.Idle);
+            UpdateModuleDropdownVisuals();
+        }
+
+        private void OnDestroy()
+        {
+            if (GuidedTourController.Instance != null)
+            {
+                GuidedTourController.Instance.OnStepChanged -= HandleTourStepChanged;
+            }
+        }
+
+        private void HandleTourStepChanged(GuidedTourController.ModuleStep step)
+        {
+            int modIndex = 1;
+            if (step >= GuidedTourController.ModuleStep.Module5_gNodeB_Intro) modIndex = 5;
+            else if (step >= GuidedTourController.ModuleStep.Module4_Antenna_Intro) modIndex = 4;
+            else if (step >= GuidedTourController.ModuleStep.Module3_Spectrum_Intro) modIndex = 3;
+            else if (step >= GuidedTourController.ModuleStep.Module2_UseCases_Overview) modIndex = 2;
+            else modIndex = 1;
+
+            SetCurrentModuleIndex(modIndex);
         }
 
         public void UpdateStateVisuals(AgentState state)
@@ -411,6 +470,46 @@ namespace FiveGLab.VoiceAgent
                 }
             }
 
+            // Toggle dropdown with [M]
+            bool mPressed = false;
+            if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame) mPressed = true;
+            try { if (Input.GetKeyDown(KeyCode.M)) mPressed = true; } catch { }
+            if (mPressed) ToggleModuleDropdown();
+
+            // Close dropdown with [Escape]
+            if (isModuleMenuOpen)
+            {
+                bool escPressed = false;
+                if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) escPressed = true;
+                try { if (Input.GetKeyDown(KeyCode.Escape)) escPressed = true; } catch { }
+                if (escPressed) CloseModuleDropdown();
+            }
+
+            // Quick select modules with keyboard digits [1] - [5]
+            int numberKeyPressed = -1;
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.digit1Key.wasPressedThisFrame) numberKeyPressed = 1;
+                else if (Keyboard.current.digit2Key.wasPressedThisFrame) numberKeyPressed = 2;
+                else if (Keyboard.current.digit3Key.wasPressedThisFrame) numberKeyPressed = 3;
+                else if (Keyboard.current.digit4Key.wasPressedThisFrame) numberKeyPressed = 4;
+                else if (Keyboard.current.digit5Key.wasPressedThisFrame) numberKeyPressed = 5;
+            }
+            try
+            {
+                if (Input.GetKeyDown(KeyCode.Alpha1)) numberKeyPressed = 1;
+                else if (Input.GetKeyDown(KeyCode.Alpha2)) numberKeyPressed = 2;
+                else if (Input.GetKeyDown(KeyCode.Alpha3)) numberKeyPressed = 3;
+                else if (Input.GetKeyDown(KeyCode.Alpha4)) numberKeyPressed = 4;
+                else if (Input.GetKeyDown(KeyCode.Alpha5)) numberKeyPressed = 5;
+            }
+            catch { }
+
+            if (numberKeyPressed >= 1 && numberKeyPressed <= 5)
+            {
+                OnModuleItemClicked(numberKeyPressed);
+            }
+
             AgentState state = VoiceAgentManager.Instance != null ? VoiceAgentManager.Instance.CurrentState : AgentState.Idle;
 
             // 1. Reactive audio RMS calculation
@@ -637,7 +736,7 @@ namespace FiveGLab.VoiceAgent
                 btnRect.anchorMin = new Vector2(0.5f, 1f);
                 btnRect.anchorMax = new Vector2(0.5f, 1f);
                 btnRect.pivot = new Vector2(0.5f, 0f);
-                btnRect.sizeDelta = new Vector2(280f, 44f);
+                btnRect.sizeDelta = new Vector2(260f, 44f);
                 btnRect.anchoredPosition = new Vector2(0f, 14f);
 
                 nextButtonBg = nextButtonRoot.AddComponent<Image>();
@@ -677,6 +776,245 @@ namespace FiveGLab.VoiceAgent
 
                 nextButtonRoot.SetActive(false);
             }
+
+            // 9. Module Selector Dropdown Button (Header)
+            if (moduleDropdownRoot == null)
+            {
+                moduleDropdownRoot = new GameObject("HUD_ModuleDropdown");
+                moduleDropdownRoot.transform.SetParent(hudRoot.transform, false);
+
+                var dRect = moduleDropdownRoot.AddComponent<RectTransform>();
+                dRect.anchorMin = new Vector2(0f, 1f);
+                dRect.anchorMax = new Vector2(0f, 1f);
+                dRect.pivot = new Vector2(0f, 0f);
+                dRect.sizeDelta = new Vector2(260f, 44f);
+                dRect.anchoredPosition = new Vector2(16f, 14f);
+
+                moduleDropdownBg = moduleDropdownRoot.AddComponent<Image>();
+                moduleDropdownBg.color = new Color(0.03f, 0.06f, 0.12f, 0.94f);
+
+                moduleDropdownOutline = moduleDropdownRoot.AddComponent<Outline>();
+                moduleDropdownOutline.effectColor = new Color(0f, 0.85f, 1f, 0.85f);
+                moduleDropdownOutline.effectDistance = new Vector2(1.5f, 1.5f);
+
+                var shadow = moduleDropdownRoot.AddComponent<Shadow>();
+                shadow.effectColor = new Color(0f, 0f, 0f, 0.70f);
+                shadow.effectDistance = new Vector2(0f, -3f);
+
+                moduleDropdownBtn = moduleDropdownRoot.AddComponent<Button>();
+                var colors = moduleDropdownBtn.colors;
+                colors.normalColor = Color.white;
+                colors.highlightedColor = new Color(0.5f, 1f, 1f, 1f);
+                colors.pressedColor = new Color(0f, 0.85f, 1f, 1f);
+                colors.selectedColor = Color.white;
+                moduleDropdownBtn.colors = colors;
+                moduleDropdownBtn.onClick.AddListener(ToggleModuleDropdown);
+
+                var lblGO = new GameObject("DropdownLabel");
+                lblGO.transform.SetParent(moduleDropdownRoot.transform, false);
+                var lRect = lblGO.AddComponent<RectTransform>();
+                lRect.anchorMin = Vector2.zero;
+                lRect.anchorMax = Vector2.one;
+                lRect.offsetMin = new Vector2(12, 0);
+                lRect.offsetMax = new Vector2(-12, 0);
+
+                moduleDropdownLabel = lblGO.AddComponent<TextMeshProUGUI>();
+                moduleDropdownLabel.fontSize = 13.5f;
+                moduleDropdownLabel.fontStyle = FontStyles.Bold;
+                moduleDropdownLabel.alignment = TextAlignmentOptions.MidlineLeft;
+                moduleDropdownLabel.text = "<color=#00E5FF><b>▼ MODULE 1</b></color> <color=#94A3B8>|</color> <color=#F1F5F9>CUPS Architecture</color>";
+            }
+
+            // 10. Module Selector Popup Menu Panel (Opens Upward Above Header Button)
+            if (moduleMenuPanel == null)
+            {
+                moduleMenuPanel = new GameObject("HUD_ModuleMenuPanel");
+                moduleMenuPanel.transform.SetParent(hudRoot.transform, false);
+
+                var pRect = moduleMenuPanel.AddComponent<RectTransform>();
+                pRect.anchorMin = new Vector2(0f, 1f);
+                pRect.anchorMax = new Vector2(0f, 1f);
+                pRect.pivot = new Vector2(0f, 0f);
+                pRect.sizeDelta = new Vector2(340f, 240f);
+                pRect.anchoredPosition = new Vector2(16f, 64f);
+
+                var pBg = moduleMenuPanel.AddComponent<Image>();
+                pBg.color = new Color(0.02f, 0.04f, 0.08f, 0.97f);
+
+                var pOutline = moduleMenuPanel.AddComponent<Outline>();
+                pOutline.effectColor = new Color(0f, 0.90f, 1f, 0.90f);
+                pOutline.effectDistance = new Vector2(2f, 2f);
+
+                var pShadow = moduleMenuPanel.AddComponent<Shadow>();
+                pShadow.effectColor = new Color(0f, 0f, 0f, 0.85f);
+                pShadow.effectDistance = new Vector2(0f, -4f);
+
+                // Menu Header
+                var hGO = new GameObject("PanelHeader");
+                hGO.transform.SetParent(moduleMenuPanel.transform, false);
+                var hRect = hGO.AddComponent<RectTransform>();
+                hRect.anchorMin = new Vector2(0f, 1f);
+                hRect.anchorMax = new Vector2(1f, 1f);
+                hRect.pivot = new Vector2(0.5f, 1f);
+                hRect.sizeDelta = new Vector2(0f, 32f);
+                hRect.anchoredPosition = new Vector2(0f, -4f);
+
+                panelHeaderTitle = hGO.AddComponent<TextMeshProUGUI>();
+                panelHeaderTitle.fontSize = 12.5f;
+                panelHeaderTitle.fontStyle = FontStyles.Bold;
+                panelHeaderTitle.alignment = TextAlignmentOptions.Center;
+                panelHeaderTitle.text = "<color=#00E5FF><b>SELECT LAB MODULE</b></color>  <size=75%><color=#64748B>[Keys 1-5 or Click]</color></size>";
+
+                // Top separator line
+                var sepGO = new GameObject("Separator");
+                sepGO.transform.SetParent(moduleMenuPanel.transform, false);
+                var sepImg = sepGO.AddComponent<Image>();
+                sepImg.color = new Color(0f, 0.90f, 1f, 0.35f);
+                var sepRect = sepGO.GetComponent<RectTransform>();
+                sepRect.anchorMin = new Vector2(0.04f, 1f);
+                sepRect.anchorMax = new Vector2(0.96f, 1f);
+                sepRect.pivot = new Vector2(0.5f, 1f);
+                sepRect.sizeDelta = new Vector2(0f, 1.5f);
+                sepRect.anchoredPosition = new Vector2(0f, -36f);
+
+                // 5 Module Choice Buttons
+                moduleItemButtons = new Button[5];
+                moduleItemBgs = new Image[5];
+                moduleItemTexts = new TextMeshProUGUI[5];
+
+                for (int i = 0; i < 5; i++)
+                {
+                    int modNum = i + 1;
+                    var itemGO = new GameObject($"ModuleItem_{modNum}");
+                    itemGO.transform.SetParent(moduleMenuPanel.transform, false);
+
+                    var itemRect = itemGO.AddComponent<RectTransform>();
+                    itemRect.anchorMin = new Vector2(0f, 1f);
+                    itemRect.anchorMax = new Vector2(1f, 1f);
+                    itemRect.pivot = new Vector2(0.5f, 1f);
+                    itemRect.sizeDelta = new Vector2(-20f, 34f);
+                    itemRect.anchoredPosition = new Vector2(0f, -42f - (i * 38f));
+
+                    var itemBg = itemGO.AddComponent<Image>();
+                    itemBg.color = new Color(0.06f, 0.12f, 0.20f, 0.70f);
+                    moduleItemBgs[i] = itemBg;
+
+                    var itemBtn = itemGO.AddComponent<Button>();
+                    var itemColors = itemBtn.colors;
+                    itemColors.normalColor = Color.white;
+                    itemColors.highlightedColor = new Color(0.5f, 1f, 1f, 1f);
+                    itemColors.pressedColor = new Color(0f, 0.85f, 1f, 1f);
+                    itemColors.selectedColor = Color.white;
+                    itemBtn.colors = itemColors;
+                    itemBtn.onClick.AddListener(() => OnModuleItemClicked(modNum));
+                    moduleItemButtons[i] = itemBtn;
+
+                    var itemTextGO = new GameObject("Text");
+                    itemTextGO.transform.SetParent(itemGO.transform, false);
+                    var itRect = itemTextGO.AddComponent<RectTransform>();
+                    itRect.anchorMin = Vector2.zero;
+                    itRect.anchorMax = Vector2.one;
+                    itRect.offsetMin = new Vector2(10f, 0f);
+                    itRect.offsetMax = new Vector2(-10f, 0f);
+
+                    var itemText = itemTextGO.AddComponent<TextMeshProUGUI>();
+                    itemText.fontSize = 12.5f;
+                    itemText.alignment = TextAlignmentOptions.MidlineLeft;
+                    itemText.text = $"<color=#00E5FF><b>[{modNum}]</b></color>  {moduleNames[i]}";
+                    moduleItemTexts[i] = itemText;
+                }
+
+                moduleMenuPanel.SetActive(false);
+            }
+        }
+
+        public void ToggleModuleDropdown()
+        {
+            EnsureUIStructure();
+            if (isModuleMenuOpen) CloseModuleDropdown();
+            else OpenModuleDropdown();
+        }
+
+        public void OpenModuleDropdown()
+        {
+            EnsureUIStructure();
+            isModuleMenuOpen = true;
+            if (moduleMenuPanel != null)
+            {
+                moduleMenuPanel.SetActive(true);
+                moduleMenuPanel.transform.localScale = Vector3.one;
+            }
+            UpdateModuleDropdownVisuals();
+        }
+
+        public void CloseModuleDropdown()
+        {
+            isModuleMenuOpen = false;
+            if (moduleMenuPanel != null)
+            {
+                moduleMenuPanel.SetActive(false);
+            }
+            UpdateModuleDropdownVisuals();
+        }
+
+        public void ShowModuleDropdownAtStart()
+        {
+            EnsureUIStructure();
+            OpenModuleDropdown();
+            if (panelHeaderTitle != null)
+            {
+                panelHeaderTitle.text = "<color=#00E5FF><b>CHOOSE STARTING MODULE</b></color>  <size=75%><color=#64748B>[Keys 1-5 or Click]</color></size>";
+            }
+        }
+
+        public void SetCurrentModuleIndex(int modIndex)
+        {
+            currentSelectedModuleIndex = Mathf.Clamp(modIndex, 1, 5);
+            UpdateModuleDropdownVisuals();
+        }
+
+        public void UpdateModuleDropdownVisuals()
+        {
+            if (moduleDropdownLabel != null)
+            {
+                string arrow = isModuleMenuOpen ? "▲" : "▼";
+                string title = moduleShortTitles[Mathf.Clamp(currentSelectedModuleIndex - 1, 0, 4)];
+                moduleDropdownLabel.text = $"<color=#00E5FF><b>{arrow} MOD {currentSelectedModuleIndex}:</b></color> <color=#CBD5E1>{title}</color>";
+            }
+
+            if (moduleItemBgs != null && moduleItemTexts != null)
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    if (moduleItemBgs[i] == null || moduleItemTexts[i] == null) continue;
+                    bool isActive = (i + 1 == currentSelectedModuleIndex);
+                    if (isActive)
+                    {
+                        moduleItemBgs[i].color = new Color(0f, 0.45f, 0.70f, 0.55f);
+                        moduleItemTexts[i].text = $"<color=#00E5FF><b>[{i + 1}]</b></color>  <b>{moduleNames[i]}</b>  <size=80%><color=#00E676>● CURRENT</color></size>";
+                    }
+                    else
+                    {
+                        moduleItemBgs[i].color = new Color(0.06f, 0.12f, 0.20f, 0.70f);
+                        moduleItemTexts[i].text = $"<color=#00E5FF><b>[{i + 1}]</b></color>  {moduleNames[i]}";
+                    }
+                }
+            }
+        }
+
+        public void OnModuleItemClicked(int modNum)
+        {
+            CloseModuleDropdown();
+            SetCurrentModuleIndex(modNum);
+            if (GuidedTourController.Instance != null)
+            {
+                GuidedTourController.Instance.JumpToModule(modNum);
+            }
+        }
+
+        public void TriggerModuleSelect(int modNum)
+        {
+            OnModuleItemClicked(modNum);
         }
 
         public void ShowNextButton(string label, System.Action onClick)

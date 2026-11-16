@@ -76,7 +76,8 @@ namespace FiveGLab.VoiceAgent
         private void Awake()
         {
             if (Instance == null) Instance = this;
-            else Destroy(gameObject);
+            else { Destroy(gameObject); return; }
+            CacheSceneReferences();
         }
 
         private void Start()
@@ -93,19 +94,33 @@ namespace FiveGLab.VoiceAgent
         {
             UseCasesBannerDisplay.EnsureInstance();
 
-            // Allow all singletons, VR Origin, and audio systems to initialize cleanly
-            yield return new WaitForSeconds(autoStartDelaySeconds);
+            // Allow singletons, VR Origin, and audio systems to initialize cleanly
+            yield return new WaitForSeconds(0.2f);
+
+            // Display the Module Selector Dropdown open right at the starting so user can choose!
+            if (VoiceAgentManager.Instance != null && VoiceAgentManager.Instance.HUD != null)
+            {
+                VoiceAgentManager.Instance.HUD.ShowModuleDropdownAtStart();
+            }
+
+            float timer = 0f;
+            float maxWait = Mathf.Max(3.5f, autoStartDelaySeconds);
+            while (timer < maxWait && currentStep == ModuleStep.NotStarted)
+            {
+                timer += Time.deltaTime;
+                yield return null;
+            }
+
             if (currentStep == ModuleStep.NotStarted)
             {
                 Debug.Log("[GuidedTourController] Auto-starting directly into Module 1 on Play mode entry...");
-                StartTour("full");
+                JumpToModule(1);
             }
         }
 
         public void StartTour(string mode = "full", string specificEquipment = null)
         {
-            if (tourRoutine != null) StopCoroutine(tourRoutine);
-            tourRoutine = StartCoroutine(RunModularCourseSequence(mode, specificEquipment));
+            JumpToModule(1);
         }
 
         public void NextStop()
@@ -117,19 +132,19 @@ namespace FiveGLab.VoiceAgent
         {
             if (currentStep < ModuleStep.Module2_UseCases_Overview)
             {
-                AdvanceToModule2();
+                JumpToModule(2);
             }
             else if (currentStep < ModuleStep.Module3_Spectrum_Intro)
             {
-                AdvanceToModule3();
+                JumpToModule(3);
             }
             else if (currentStep < ModuleStep.Module4_Antenna_Intro)
             {
-                AdvanceToModule4();
+                JumpToModule(4);
             }
             else if (currentStep < ModuleStep.Module5_gNodeB_Intro)
             {
-                AdvanceToModule5();
+                JumpToModule(5);
             }
             else
             {
@@ -137,15 +152,15 @@ namespace FiveGLab.VoiceAgent
             }
         }
 
-        public void AdvanceToModule2()
-        {
-            if (currentStep >= ModuleStep.Module2_UseCases_Overview && currentStep <= ModuleStep.Module2_UseCases_Quiz)
-            {
-                Debug.Log("[GuidedTourController] Already in Module 2.");
-                return;
-            }
+        public void AdvanceToModule1() => JumpToModule(1);
+        public void AdvanceToModule2() => JumpToModule(2);
+        public void AdvanceToModule3() => JumpToModule(3);
+        public void AdvanceToModule4() => JumpToModule(4);
+        public void AdvanceToModule5() => JumpToModule(5);
 
-            Debug.Log("[GuidedTourController] Advancing from Module 1 to Module 2 (5G Use Cases)...");
+        public void JumpToModule(int moduleNumber)
+        {
+            Debug.Log($"[GuidedTourController] Jumping directly to Module {moduleNumber}...");
             isWaitingForQuizAnswer = false;
             isWaitingForNextButton = false;
 
@@ -154,39 +169,24 @@ namespace FiveGLab.VoiceAgent
             VoiceAgentManager.Instance?.GetComponentInChildren<AgentSpeaker>()?.StopSpeaking();
             VoiceAgentManager.Instance?.HUD?.ClearDialogue();
 
-            // Clean up Module 1 visuals immediately
+            // Clean up banners and highlights
             CupsBannerDisplay.Instance?.SetHighlightSection("none");
             CupsBannerDisplay.Instance?.HideTargetElement();
             CupsBannerDisplay.Instance?.SetPopUpState(false);
 
-            if (tourRoutine != null)
-            {
-                StopCoroutine(tourRoutine);
-                tourRoutine = null;
-            }
-
-            tourRoutine = StartCoroutine(ResumeTourFromModule2());
-        }
-
-        public void AdvanceToModule3()
-        {
-            if (currentStep >= ModuleStep.Module3_Spectrum_Intro && currentStep <= ModuleStep.Module3_Spectrum_Quiz)
-            {
-                return;
-            }
-
-            Debug.Log("[GuidedTourController] Advancing to Module 3 (Spectrometer)...");
-            isWaitingForQuizAnswer = false;
-            isWaitingForNextButton = false;
-
-            VoiceAgentManager.Instance?.CancelInFlightOperations();
-            VoiceAgentManager.Instance?.GetComponentInChildren<AgentSpeaker>()?.StopSpeaking();
-            VoiceAgentManager.Instance?.HUD?.ClearDialogue();
-
             UseCasesBannerDisplay.Instance?.SetHighlightSection("none");
             UseCasesBannerDisplay.Instance?.HideTargetElement();
             UseCasesBannerDisplay.Instance?.SetPopUpState(false);
-            SetObscuringEquipmentVisible(true);
+
+            // Set obscuring equipment visibility based on target
+            if (moduleNumber >= 3)
+            {
+                SetObscuringEquipmentVisible(true);
+            }
+            else
+            {
+                SetObscuringEquipmentVisible(false);
+            }
 
             if (tourRoutine != null)
             {
@@ -194,55 +194,31 @@ namespace FiveGLab.VoiceAgent
                 tourRoutine = null;
             }
 
-            tourRoutine = StartCoroutine(ResumeTourFromModule3());
-        }
+            // Update HUD dropdown visuals
+            VoiceAgentManager.Instance?.HUD?.SetCurrentModuleIndex(moduleNumber);
+            VoiceAgentManager.Instance?.HUD?.CloseModuleDropdown();
 
-        public void AdvanceToModule4()
-        {
-            if (currentStep >= ModuleStep.Module4_Antenna_Intro && currentStep <= ModuleStep.Module4_Antenna_Quiz)
+            switch (moduleNumber)
             {
-                return;
+                case 1:
+                    tourRoutine = StartCoroutine(ResumeTourFromModule1());
+                    break;
+                case 2:
+                    tourRoutine = StartCoroutine(ResumeTourFromModule2());
+                    break;
+                case 3:
+                    tourRoutine = StartCoroutine(ResumeTourFromModule3());
+                    break;
+                case 4:
+                    tourRoutine = StartCoroutine(ResumeTourFromModule4());
+                    break;
+                case 5:
+                    tourRoutine = StartCoroutine(ResumeTourFromModule5());
+                    break;
+                default:
+                    tourRoutine = StartCoroutine(ResumeTourFromModule1());
+                    break;
             }
-
-            Debug.Log("[GuidedTourController] Advancing to Module 4 (Antenna)...");
-            isWaitingForQuizAnswer = false;
-            isWaitingForNextButton = false;
-
-            VoiceAgentManager.Instance?.CancelInFlightOperations();
-            VoiceAgentManager.Instance?.GetComponentInChildren<AgentSpeaker>()?.StopSpeaking();
-            VoiceAgentManager.Instance?.HUD?.ClearDialogue();
-
-            if (tourRoutine != null)
-            {
-                StopCoroutine(tourRoutine);
-                tourRoutine = null;
-            }
-
-            tourRoutine = StartCoroutine(ResumeTourFromModule4());
-        }
-
-        public void AdvanceToModule5()
-        {
-            if (currentStep >= ModuleStep.Module5_gNodeB_Intro && currentStep <= ModuleStep.Module5_gNodeB_Quiz)
-            {
-                return;
-            }
-
-            Debug.Log("[GuidedTourController] Advancing to Module 5 (gNodeB)...");
-            isWaitingForQuizAnswer = false;
-            isWaitingForNextButton = false;
-
-            VoiceAgentManager.Instance?.CancelInFlightOperations();
-            VoiceAgentManager.Instance?.GetComponentInChildren<AgentSpeaker>()?.StopSpeaking();
-            VoiceAgentManager.Instance?.HUD?.ClearDialogue();
-
-            if (tourRoutine != null)
-            {
-                StopCoroutine(tourRoutine);
-                tourRoutine = null;
-            }
-
-            tourRoutine = StartCoroutine(ResumeTourFromModule5());
         }
 
         public void AdvanceToCompletion()
@@ -269,8 +245,28 @@ namespace FiveGLab.VoiceAgent
             tourRoutine = StartCoroutine(RunCourseCompletion());
         }
 
+        private IEnumerator ResumeTourFromModule1()
+        {
+            if (VoiceAgentManager.Instance != null)
+            {
+                VoiceAgentManager.Instance.SetState(AgentState.Touring);
+                VoiceAgentManager.Instance.HUD?.SetCinemaSubtitleMode(true);
+            }
+            yield return RunModule1Sequence();
+            yield return RunModule2Sequence();
+            yield return RunModule3Sequence();
+            yield return RunModule4Sequence();
+            yield return RunModule5Sequence();
+            yield return RunCourseCompletion();
+        }
+
         private IEnumerator ResumeTourFromModule2()
         {
+            if (VoiceAgentManager.Instance != null)
+            {
+                VoiceAgentManager.Instance.SetState(AgentState.Touring);
+                VoiceAgentManager.Instance.HUD?.SetCinemaSubtitleMode(true);
+            }
             yield return RunModule2Sequence();
             yield return RunModule3Sequence();
             yield return RunModule4Sequence();
@@ -280,6 +276,11 @@ namespace FiveGLab.VoiceAgent
 
         private IEnumerator ResumeTourFromModule3()
         {
+            if (VoiceAgentManager.Instance != null)
+            {
+                VoiceAgentManager.Instance.SetState(AgentState.Touring);
+                VoiceAgentManager.Instance.HUD?.SetCinemaSubtitleMode(true);
+            }
             yield return RunModule3Sequence();
             yield return RunModule4Sequence();
             yield return RunModule5Sequence();
@@ -288,6 +289,11 @@ namespace FiveGLab.VoiceAgent
 
         private IEnumerator ResumeTourFromModule4()
         {
+            if (VoiceAgentManager.Instance != null)
+            {
+                VoiceAgentManager.Instance.SetState(AgentState.Touring);
+                VoiceAgentManager.Instance.HUD?.SetCinemaSubtitleMode(true);
+            }
             yield return RunModule4Sequence();
             yield return RunModule5Sequence();
             yield return RunCourseCompletion();
@@ -295,6 +301,11 @@ namespace FiveGLab.VoiceAgent
 
         private IEnumerator ResumeTourFromModule5()
         {
+            if (VoiceAgentManager.Instance != null)
+            {
+                VoiceAgentManager.Instance.SetState(AgentState.Touring);
+                VoiceAgentManager.Instance.HUD?.SetCinemaSubtitleMode(true);
+            }
             yield return RunModule5Sequence();
             yield return RunCourseCompletion();
         }
