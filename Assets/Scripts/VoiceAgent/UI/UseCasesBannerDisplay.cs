@@ -33,11 +33,11 @@ namespace FiveGLab.VoiceAgent
         [Header("Banner Presentation Transform")]
         private Vector3 wallRestPosition = new Vector3(7.44f, 2.29f, 3.10f);
         private Quaternion wallRestRotation = Quaternion.Euler(0f, 90f, 0f);
-        private Vector3 poppedPosition = new Vector3(7.15f, 2.29f, 3.10f); // Subtle, natural lift off the wall
+        private Vector3 poppedPosition = new Vector3(4.80f, 2.15f, 3.10f); // Popped 2.64m forward into open aisle
         private Quaternion poppedRotation = Quaternion.Euler(0f, 90f, 0f);
 
         [SerializeField] private Vector3 bannerScale = new Vector3(8.0f, 5.0f, 1.0f); // Authentic wall scale
-        [SerializeField] private float popDuration = 0.65f;
+        [SerializeField] private float popDuration = 0.85f;
 
         [Header("Cybernetic Color Palette")]
         private readonly Color colEMBB = new Color(0.0f, 0.90f, 1.0f, 1.0f);     // Electric Cyan (High Speed / Bandwidth)
@@ -100,8 +100,13 @@ namespace FiveGLab.VoiceAgent
                 wallRestRotation = Quaternion.Euler(0f, 90f, 0f);
             }
 
-            // Natural presentation transform: slightly lifted from wall surface
-            poppedPosition = new Vector3(7.15f, wallRestPosition.y, wallRestPosition.z);
+            if (transform.localScale != Vector3.zero)
+            {
+                bannerScale = transform.localScale;
+            }
+
+            // Popped presentation transform: open aisle, eye-level (X=4.80m, matching Poster1 pop distance)
+            poppedPosition = new Vector3(4.80f, 2.15f, wallRestPosition.z);
             poppedRotation = Quaternion.Euler(0f, 90f, 0f);
 
             transform.localScale = bannerScale;
@@ -148,10 +153,10 @@ namespace FiveGLab.VoiceAgent
 
         private void BuildHighlightOutlines()
         {
-            lineFrame = CreateOutlineLine("Outline_Frame", colFrame, 0.0035f);
-            lineEMBB = CreateOutlineLine("Outline_eMBB", colEMBB, 0.0040f);
-            lineMMTC = CreateOutlineLine("Outline_mMTC", colMMTC, 0.0040f);
-            lineURLLC = CreateOutlineLine("Outline_uRLLC", colURLLC, 0.0040f);
+            lineFrame = CreateOutlineLine("Outline_Frame", colFrame, 0.012f);
+            lineEMBB = CreateOutlineLine("Outline_eMBB", colEMBB, 0.014f);
+            lineMMTC = CreateOutlineLine("Outline_mMTC", colMMTC, 0.014f);
+            lineURLLC = CreateOutlineLine("Outline_uRLLC", colURLLC, 0.014f);
 
             // Frame border around authentic poster diagram
             UpdateRectLine(lineFrame, -0.1224f, 0.1281f, -0.1370f, 0.1435f, 0.012f);
@@ -173,14 +178,16 @@ namespace FiveGLab.VoiceAgent
             targetReticleGO.transform.SetParent(transform, false);
 
             targetReticleLine = targetReticleGO.AddComponent<LineRenderer>();
-            Material mat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Sprites/Default"));
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Sprites/Default");
+            Material mat = new Material(shader);
+            mat.SetColor("_BaseColor", colReticle);
             mat.color = colReticle;
             targetReticleLine.material = mat;
             targetReticleLine.useWorldSpace = false;
             targetReticleLine.loop = true;
             targetReticleLine.positionCount = 4;
-            targetReticleLine.startWidth = 0.0045f;
-            targetReticleLine.endWidth = 0.0045f;
+            targetReticleLine.startWidth = 0.016f;
+            targetReticleLine.endWidth = 0.016f;
             targetReticleLine.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             targetReticleLine.receiveShadows = false;
             targetReticleLine.enabled = false;
@@ -192,7 +199,9 @@ namespace FiveGLab.VoiceAgent
             go.transform.SetParent(transform, false);
 
             LineRenderer lr = go.AddComponent<LineRenderer>();
-            Material mat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Sprites/Default"));
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Sprites/Default");
+            Material mat = new Material(shader);
+            mat.SetColor("_BaseColor", color);
             mat.color = color;
             lr.material = mat;
             lr.useWorldSpace = false;
@@ -281,7 +290,6 @@ namespace FiveGLab.VoiceAgent
 
         public void SetPopUpState(bool pop)
         {
-            if (isPopped == pop) return;
             isPopped = pop;
 
             if (popRoutine != null) StopCoroutine(popRoutine);

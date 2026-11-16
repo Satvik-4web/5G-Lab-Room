@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using TMPro;
 
 namespace FiveGLab.VoiceAgent
@@ -382,6 +383,34 @@ namespace FiveGLab.VoiceAgent
                 }
             }
 
+            // Keyboard shortcuts to advance tour: [N], [Space], [Enter]
+            if (isNextButtonActive)
+            {
+                bool advancePressed = false;
+                if (Keyboard.current != null)
+                {
+                    if (Keyboard.current.nKey.wasPressedThisFrame ||
+                        Keyboard.current.spaceKey.wasPressedThisFrame ||
+                        Keyboard.current.enterKey.wasPressedThisFrame)
+                    {
+                        advancePressed = true;
+                    }
+                }
+                try
+                {
+                    if (Input.GetKeyDown(KeyCode.N) || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
+                    {
+                        advancePressed = true;
+                    }
+                }
+                catch { }
+
+                if (advancePressed)
+                {
+                    TriggerNext();
+                }
+            }
+
             AgentState state = VoiceAgentManager.Instance != null ? VoiceAgentManager.Instance.CurrentState : AgentState.Idle;
 
             // 1. Reactive audio RMS calculation
@@ -644,7 +673,7 @@ namespace FiveGLab.VoiceAgent
                 nextButtonText.fontStyle = FontStyles.Bold;
                 nextButtonText.alignment = TextAlignmentOptions.Center;
                 nextButtonText.color = new Color(0f, 0.95f, 1f, 1f);
-                nextButtonText.text = "NEXT: MODULE 2 ➔  <size=75%><color=#80D8FF>[N]</color></size>";
+                nextButtonText.text = "NEXT: MODULE 2 >  <size=75%><color=#80D8FF>[N / Click]</color></size>";
 
                 nextButtonRoot.SetActive(false);
             }
@@ -665,8 +694,6 @@ namespace FiveGLab.VoiceAgent
             {
                 nextButtonText.text = label;
             }
-
-            ModuleScreenOverlayNav.EnsureInstance()?.ShowNextButton(label, onClick);
         }
 
         public void HideNextButton()
@@ -678,8 +705,6 @@ namespace FiveGLab.VoiceAgent
             {
                 nextButtonRoot.SetActive(false);
             }
-
-            ModuleScreenOverlayNav.Instance?.HideNextButton();
         }
 
         private void OnNextButtonClicked()

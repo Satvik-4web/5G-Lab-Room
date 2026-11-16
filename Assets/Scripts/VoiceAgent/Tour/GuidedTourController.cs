@@ -82,7 +82,6 @@ namespace FiveGLab.VoiceAgent
         private void Start()
         {
             UseCasesBannerDisplay.EnsureInstance();
-            ModuleScreenOverlayNav.EnsureInstance();
 
             if (autoStartModule1OnPlay)
             {
@@ -93,7 +92,6 @@ namespace FiveGLab.VoiceAgent
         private IEnumerator AutoStartRoutine()
         {
             UseCasesBannerDisplay.EnsureInstance();
-            ModuleScreenOverlayNav.EnsureInstance();
 
             // Allow all singletons, VR Origin, and audio systems to initialize cleanly
             yield return new WaitForSeconds(autoStartDelaySeconds);
@@ -215,16 +213,11 @@ namespace FiveGLab.VoiceAgent
             {
                 VoiceAgentManager.Instance.HUD.ShowNextButton(label, onClick);
             }
-            else
-            {
-                ModuleScreenOverlayNav.EnsureInstance()?.ShowNextButton(label, onClick);
-            }
         }
 
         private void HideNextButton()
         {
             VoiceAgentManager.Instance?.HUD?.HideNextButton();
-            ModuleScreenOverlayNav.Instance?.HideNextButton();
         }
 
         private GameObject cachedGNodeB;
@@ -374,7 +367,7 @@ namespace FiveGLab.VoiceAgent
             CupsBannerDisplay.Instance?.HideTargetElement();
 
             // Display Next button right away so user can advance anytime
-            ShowNextButton("NEXT: MODULE 2 ➔  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule2());
+            ShowNextButton("NEXT: MODULE 2 >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule2());
 
             yield return SpeakAndWait("Hey there! Welcome to our 5G Lab. I'm Aria, and I'll be walking you through the lab today. Right in front of us on the wall is our university's official 5G Architecture poster. It lays out the foundation of modern 5G—called CUPS, or Control and User Plane Separation. Basically, older cellular networks bundled everything into one big bottleneck. In 5G, we completely separated the brain of the network from the muscle that moves data. Let's break it down step-by-step!", "mod_line_0.wav");
 
@@ -427,7 +420,7 @@ namespace FiveGLab.VoiceAgent
             yield return new WaitForSeconds(0.4f);
 
             // Prompt user with Next button to proceed to Module 2
-            ShowNextButton("NEXT: MODULE 2 ➔  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule2());
+            ShowNextButton("NEXT: MODULE 2 >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule2());
             yield return SpeakAndWait("Great job on Module 1! Click Next or press N whenever you're ready to head over to Module 2.", "mod1_next_prompt.wav");
 
             // Wait until user clicks Next or presses [N] / [Space]
@@ -447,8 +440,14 @@ namespace FiveGLab.VoiceAgent
             currentStep = ModuleStep.Module2_UseCases_Overview;
             OnStepChanged?.Invoke(currentStep);
 
+            // Clean up Module 1 visuals immediately
+            CupsBannerDisplay.Instance?.SetHighlightSection("none");
+            CupsBannerDisplay.Instance?.HideTargetElement();
+            CupsBannerDisplay.Instance?.SetPopUpState(false);
+            SetObscuringEquipmentVisible(false);
+
             // Update Next button for Module 3
-            ShowNextButton("NEXT: MODULE 3 ➔  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule3());
+            ShowNextButton("NEXT: MODULE 3 >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule3());
 
             UseCasesBannerDisplay.EnsureInstance()?.SetPopUpState(true);
             PCInteractionTester.InspectEquipment(EquipmentId.banner_usecases);
