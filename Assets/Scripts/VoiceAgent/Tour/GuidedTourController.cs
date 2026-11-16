@@ -35,20 +35,20 @@ namespace FiveGLab.VoiceAgent
             Module2_UseCases_uRLLC,
             Module2_UseCases_Quiz,
 
-            // MODULE 3: gNodeB Base Station & Massive MIMO Radio
-            Module3_gNodeB_Intro,
-            Module3_gNodeB_Beamforming,
-            Module3_gNodeB_Quiz,
+            // MODULE 3: Spectrometer (RF Spectrum Analyzer on Workbench)
+            Module3_Spectrum_Intro,
+            Module3_Spectrum_Diagnostics,
+            Module3_Spectrum_Quiz,
 
-            // MODULE 4: Mobile Edge Computing (MEC) Server Rack & Distributed UPF
-            Module4_MEC_Intro,
-            Module4_MEC_LowLatency,
-            Module4_MEC_Quiz,
+            // MODULE 4: 5G Antenna & Massive MIMO Radio (Tripod)
+            Module4_Antenna_Intro,
+            Module4_Antenna_Beamforming,
+            Module4_Antenna_Quiz,
 
-            // MODULE 5: RF Spectrum Analyzer & Signal Diagnostics
-            Module5_Spectrum_Intro,
-            Module5_Spectrum_Diagnostics,
-            Module5_Spectrum_Quiz,
+            // MODULE 5: gNodeB Base Station & 5G Core Rack
+            Module5_gNodeB_Intro,
+            Module5_gNodeB_ComputeAndEdge,
+            Module5_gNodeB_Quiz,
 
             // COMPLETION & RECAP
             RecapAndWrapUp,
@@ -119,14 +119,21 @@ namespace FiveGLab.VoiceAgent
             {
                 AdvanceToModule2();
             }
-            else if (currentStep < ModuleStep.Module3_gNodeB_Intro)
+            else if (currentStep < ModuleStep.Module3_Spectrum_Intro)
             {
                 AdvanceToModule3();
             }
+            else if (currentStep < ModuleStep.Module4_Antenna_Intro)
+            {
+                AdvanceToModule4();
+            }
+            else if (currentStep < ModuleStep.Module5_gNodeB_Intro)
+            {
+                AdvanceToModule5();
+            }
             else
             {
-                isWaitingForQuizAnswer = false;
-                isWaitingForNextButton = false;
+                AdvanceToCompletion();
             }
         }
 
@@ -163,12 +170,12 @@ namespace FiveGLab.VoiceAgent
 
         public void AdvanceToModule3()
         {
-            if (currentStep >= ModuleStep.Module3_gNodeB_Intro && currentStep <= ModuleStep.Module3_gNodeB_Quiz)
+            if (currentStep >= ModuleStep.Module3_Spectrum_Intro && currentStep <= ModuleStep.Module3_Spectrum_Quiz)
             {
                 return;
             }
 
-            Debug.Log("[GuidedTourController] Advancing to Module 3 (gNodeB)...");
+            Debug.Log("[GuidedTourController] Advancing to Module 3 (Spectrometer)...");
             isWaitingForQuizAnswer = false;
             isWaitingForNextButton = false;
 
@@ -190,6 +197,78 @@ namespace FiveGLab.VoiceAgent
             tourRoutine = StartCoroutine(ResumeTourFromModule3());
         }
 
+        public void AdvanceToModule4()
+        {
+            if (currentStep >= ModuleStep.Module4_Antenna_Intro && currentStep <= ModuleStep.Module4_Antenna_Quiz)
+            {
+                return;
+            }
+
+            Debug.Log("[GuidedTourController] Advancing to Module 4 (Antenna)...");
+            isWaitingForQuizAnswer = false;
+            isWaitingForNextButton = false;
+
+            VoiceAgentManager.Instance?.CancelInFlightOperations();
+            VoiceAgentManager.Instance?.GetComponentInChildren<AgentSpeaker>()?.StopSpeaking();
+            VoiceAgentManager.Instance?.HUD?.ClearDialogue();
+
+            if (tourRoutine != null)
+            {
+                StopCoroutine(tourRoutine);
+                tourRoutine = null;
+            }
+
+            tourRoutine = StartCoroutine(ResumeTourFromModule4());
+        }
+
+        public void AdvanceToModule5()
+        {
+            if (currentStep >= ModuleStep.Module5_gNodeB_Intro && currentStep <= ModuleStep.Module5_gNodeB_Quiz)
+            {
+                return;
+            }
+
+            Debug.Log("[GuidedTourController] Advancing to Module 5 (gNodeB)...");
+            isWaitingForQuizAnswer = false;
+            isWaitingForNextButton = false;
+
+            VoiceAgentManager.Instance?.CancelInFlightOperations();
+            VoiceAgentManager.Instance?.GetComponentInChildren<AgentSpeaker>()?.StopSpeaking();
+            VoiceAgentManager.Instance?.HUD?.ClearDialogue();
+
+            if (tourRoutine != null)
+            {
+                StopCoroutine(tourRoutine);
+                tourRoutine = null;
+            }
+
+            tourRoutine = StartCoroutine(ResumeTourFromModule5());
+        }
+
+        public void AdvanceToCompletion()
+        {
+            if (currentStep >= ModuleStep.RecapAndWrapUp)
+            {
+                return;
+            }
+
+            Debug.Log("[GuidedTourController] Advancing to Course Completion...");
+            isWaitingForQuizAnswer = false;
+            isWaitingForNextButton = false;
+
+            VoiceAgentManager.Instance?.CancelInFlightOperations();
+            VoiceAgentManager.Instance?.GetComponentInChildren<AgentSpeaker>()?.StopSpeaking();
+            VoiceAgentManager.Instance?.HUD?.ClearDialogue();
+
+            if (tourRoutine != null)
+            {
+                StopCoroutine(tourRoutine);
+                tourRoutine = null;
+            }
+
+            tourRoutine = StartCoroutine(RunCourseCompletion());
+        }
+
         private IEnumerator ResumeTourFromModule2()
         {
             yield return RunModule2Sequence();
@@ -203,6 +282,19 @@ namespace FiveGLab.VoiceAgent
         {
             yield return RunModule3Sequence();
             yield return RunModule4Sequence();
+            yield return RunModule5Sequence();
+            yield return RunCourseCompletion();
+        }
+
+        private IEnumerator ResumeTourFromModule4()
+        {
+            yield return RunModule4Sequence();
+            yield return RunModule5Sequence();
+            yield return RunCourseCompletion();
+        }
+
+        private IEnumerator ResumeTourFromModule5()
+        {
             yield return RunModule5Sequence();
             yield return RunCourseCompletion();
         }
@@ -446,8 +538,8 @@ namespace FiveGLab.VoiceAgent
             CupsBannerDisplay.Instance?.SetPopUpState(false);
             SetObscuringEquipmentVisible(false);
 
-            // Update Next button for Module 3
-            ShowNextButton("NEXT: MODULE 3 >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule3());
+            // Update Next button for Module 3 (Spectrometer)
+            ShowNextButton("NEXT: MODULE 3 (SPECTROMETER) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule3());
 
             UseCasesBannerDisplay.EnsureInstance()?.SetPopUpState(true);
             PCInteractionTester.InspectEquipment(EquipmentId.banner_usecases);
@@ -506,88 +598,114 @@ namespace FiveGLab.VoiceAgent
         private IEnumerator RunModule3Sequence()
         {
             // ==========================================
-            // MODULE 3: gNodeB BASE STATION & RADIO
+            // MODULE 3: SPECTROMETER (RF SPECTRUM ANALYZER)
             // ==========================================
-            currentStep = ModuleStep.Module3_gNodeB_Intro;
+            currentStep = ModuleStep.Module3_Spectrum_Intro;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Spot on! uRLLC provides the sub-millisecond reaction time and rock-solid reliability critical for robotic surgery. Now that we understand both the network architecture and the use cases, let's step over to Module 3 to inspect our physical 5G base station in 3D!", "usecases_line_5.wav");
 
-            PCInteractionTester.InspectEquipment(EquipmentId.gnodeb);
-            yield return new WaitForSeconds(1.3f);
+            // Re-activate physical lab equipment and ensure banners are back on wall
+            CupsBannerDisplay.Instance?.SetPopUpState(false);
+            UseCasesBannerDisplay.Instance?.SetPopUpState(false);
+            SetObscuringEquipmentVisible(true);
 
-            currentStep = ModuleStep.Module3_gNodeB_Beamforming;
+            // Update Next button for Module 4 (Antenna)
+            ShowNextButton("NEXT: MODULE 4 (ANTENNA) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule4());
+
+            // Focus camera on the Spectrum Analyzer on the lab bench
+            PCInteractionTester.InspectEquipment(EquipmentId.spectrum);
+            yield return new WaitForSeconds(1.2f);
+
+            yield return SpeakAndWait("Awesome job on the use cases! Now, let's step over to Module 3 to check out our lab's Spectrometer—specifically, this RF Spectrum Analyzer right here on the workbench. In wireless communication, radio waves are completely invisible, but this instrument is basically our superpower: it captures raw 5G airwaves and translates them into live visual graphs on screen so we can see every single signal.", "mod3_spectrum_0.wav");
+
+            currentStep = ModuleStep.Module3_Spectrum_Diagnostics;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("This is our gNodeB, connecting mobile devices over 5G New Radio. Notice the Massive MIMO antenna array on top—it packs 64 transmit and 64 receive elements. Instead of broadcasting radio signals everywhere like older towers, it uses beamforming to focus radio waves into tight, steerable beams aimed straight at active users. That eliminates interference and gives you blazing fast speeds.", "mod_line_7.wav");
+            yield return SpeakAndWait("Take a look at the display grid. The horizontal axis plots frequency, spanning from low-band Sub-6 gigahertz all the way up to high-band 28 gigahertz millimeter wave. The vertical axis shows signal amplitude, or power. Whenever a 5G transmitter fires, you'll see a clean, sharp peak rise right above the background noise floor. That lets our engineers instantly spot signal distortion, verify transmission bandwidth, and hunt down any rogue interference.", "mod3_spectrum_1.wav");
 
             // Module 3 Quiz
-            currentStep = ModuleStep.Module3_gNodeB_Quiz;
+            currentStep = ModuleStep.Module3_Spectrum_Quiz;
             OnStepChanged?.Invoke(currentStep);
             currentQuizQuestion = new QuizQuestion
             {
-                question = "What does active beamforming actually do to 5G radio signals?",
-                acceptedKeywords = new[] { "focus", "direct", "narrow", "target", "aim", "steer" },
-                explanation = "Beamforming focuses radio wave energy into targeted, narrow beams directed at active user devices."
+                question = "On this spectrum analyzer, what two key variables are plotted on the screen to show how our 5G signal is performing?",
+                acceptedKeywords = new[] { "frequency", "amplitude", "power", "freq", "strength" },
+                explanation = "The spectrum analyzer plots frequency along the horizontal axis and signal amplitude or power on the vertical axis."
             };
-            yield return SpeakAndWait("Quick check on Module 3: What does active beamforming actually do to 5G radio signals? Hold down the V key and tell me!", "mod_line_8.wav");
-            yield return WaitForAnswerOrTimeout(8f);
+            yield return SpeakAndWait("Let's do a quick knowledge check for Module 3! On this spectrum analyzer, what two key variables are plotted on the screen to show how our 5G signal is performing? Hold down the V key and let me know!", "mod3_spectrum_2.wav");
+            yield return WaitForAnswerOrTimeout(10f);
+
+            yield return SpeakAndWait("Spot on! The spectrum analyzer plots frequency on the horizontal axis and signal amplitude or power on the vertical axis. Now that we know how to measure RF signals, let's step over to Module 4 to inspect the hardware actually transmitting those waves: our 5G Antenna!", "mod3_spectrum_3.wav");
         }
 
         private IEnumerator RunModule4Sequence()
         {
             // ==========================================
-            // MODULE 4: MEC-CORE SERVER RACK & EDGE UPF
+            // MODULE 4: 5G ANTENNA & MASSIVE MIMO (TRIPOD)
             // ==========================================
-            currentStep = ModuleStep.Module4_MEC_Intro;
+            currentStep = ModuleStep.Module4_Antenna_Intro;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Awesome! Beamforming focuses radio energy directly at active users. Next up, let's step to Module 4: our Mobile Edge Computing core server rack!", "mod_line_9.wav");
 
-            PCInteractionTester.InspectEquipment(EquipmentId.mec);
-            yield return new WaitForSeconds(1.3f);
+            // Update Next button for Module 5 (gNodeB)
+            ShowNextButton("NEXT: MODULE 5 (GNODEB) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule5());
 
-            currentStep = ModuleStep.Module4_MEC_LowLatency;
+            // Focus camera on the 5G Antenna array at the top of the tripod
+            PCInteractionTester.InspectEquipment(EquipmentId.gnodeb);
+            yield return new WaitForSeconds(1.2f);
+
+            yield return SpeakAndWait("Welcome to Module 4! Take a look at this tripod setup right in front of us. This is our 5G Antenna unit. In older 4G cell towers, antennas were passive and blasted radio waves in every direction like an unfocused lightbulb, which wasted huge amounts of energy. 5G completely revolutionized this with an active phased array technology called Massive MIMO.", "mod4_antenna_0.wav");
+
+            currentStep = ModuleStep.Module4_Antenna_Beamforming;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Here's our MEC server rack. Remember the UPF and Local Data Network we saw on the banner? This rack is where they actually live! By running high-performance compute and user plane functions right here on-site, we cut out long internet round-trips. That's how we get sub-millisecond response times for real-time AI and robotics.", "mod_line_10.wav");
+            yield return SpeakAndWait("Notice the antenna array mounted up top. Packed behind that casing are 64 transmit and 64 receive elements. Instead of broadcasting broad signals, the antenna dynamically shifts the phase of each element to synthesize tight, steerable radio beams. It literally tracks active users—beaming high-speed gigabit data straight to your phone while you're walking, and creating zero interference for everyone else!", "mod4_antenna_1.wav");
 
             // Module 4 Quiz
-            currentStep = ModuleStep.Module4_MEC_Quiz;
+            currentStep = ModuleStep.Module4_Antenna_Quiz;
             OnStepChanged?.Invoke(currentStep);
             currentQuizQuestion = new QuizQuestion
             {
-                question = "Why do we put MEC servers right at the edge of the network instead of the cloud?",
-                acceptedKeywords = new[] { "latency", "speed", "fast", "closer", "delay", "millisecond", "lag" },
-                explanation = "Placing MEC servers at the edge eliminates backhaul delays and delivers sub-millisecond response times."
+                question = "What advanced technique does this 5G antenna use to steer focused, high-power radio beams directly at active users?",
+                acceptedKeywords = new[] { "beamforming", "beam forming", "mimo", "massive mimo", "beam", "focus" },
+                explanation = "Beamforming focuses and steers radio wave energy directly to active users, multiplying signal strength and killing interference."
             };
-            yield return SpeakAndWait("Quick check on Module 4: Why do we put MEC servers right at the edge of the network instead of the cloud? Hold down the V key to answer!", "mod_line_11.wav");
-            yield return WaitForAnswerOrTimeout(8f);
+            yield return SpeakAndWait("Quick check for Module 4: What advanced technique does this 5G antenna use to steer focused, high-power radio beams directly at active users? Hold down the V key and tell me!", "mod4_antenna_2.wav");
+            yield return WaitForAnswerOrTimeout(10f);
+
+            yield return SpeakAndWait("Exactly right! Active beamforming focuses radio energy directly at target devices. Now that we've seen how the antenna transmits over the air, let's head over to Module 5 to inspect the massive computing brain running the whole show: the gNodeB base station!", "mod4_antenna_3.wav");
         }
 
         private IEnumerator RunModule5Sequence()
         {
             // ==========================================
-            // MODULE 5: RF SPECTRUM ANALYZER
+            // MODULE 5: GNODEB BASE STATION & 5G CORE RACK
             // ==========================================
-            currentStep = ModuleStep.Module5_Spectrum_Intro;
+            currentStep = ModuleStep.Module5_gNodeB_Intro;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Exactly—putting compute at the edge kills latency. Finally, let's head over to Module 5 to inspect our precision RF Spectrum Analyzer!", "mod_line_12.wav");
 
-            PCInteractionTester.InspectEquipment(EquipmentId.spectrum);
-            yield return new WaitForSeconds(1.3f);
+            // Update Next button for Course Completion
+            ShowNextButton("FINISH TOUR >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToCompletion());
 
-            currentStep = ModuleStep.Module5_Spectrum_Diagnostics;
+            // Focus camera on the gNodeB Base Station & Core Server Rack
+            PCInteractionTester.InspectEquipment(EquipmentId.mec);
+            yield return new WaitForSeconds(1.2f);
+
+            yield return SpeakAndWait("And here we are at Module 5! Take a look at this large illuminated server cabinet. This is the heart of the gNodeB and our 5G processing system. gNodeB stands for next-generation Node B, and it's the official 3GPP standard name for modern 5G base stations. While the antenna handles the wireless radio waves, this rack houses the massive digital processing units that control the entire network.", "mod5_gnodeb_0.wav");
+
+            currentStep = ModuleStep.Module5_gNodeB_ComputeAndEdge;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("This is our RF Spectrum Analyzer. It's the ultimate lab diagnostic tool. It captures high-frequency radio waves across Sub-6 and millimeter wave bands, plotting signal amplitude on the vertical axis against frequency on the horizontal axis. That lets us verify signal purity, check bandwidth, and hunt down any rogue interference.", "mod_line_13.wav");
+            yield return SpeakAndWait("Inside this rack, the gNodeB is split into the Distributed Unit and Centralized Unit. It handles microsecond-level packet scheduling, quality of service, security encryption, and manages seamless handovers between cell towers. Mounted right alongside it is our Mobile Edge Computing server, hosting the UPF so data breaks out locally without long trips to distant clouds. Together, they deliver the ultra-reliable, high-throughput promise of 5G!", "mod5_gnodeb_1.wav");
 
             // Module 5 Quiz
-            currentStep = ModuleStep.Module5_Spectrum_Quiz;
+            currentStep = ModuleStep.Module5_gNodeB_Quiz;
             OnStepChanged?.Invoke(currentStep);
             currentQuizQuestion = new QuizQuestion
             {
-                question = "What two variables does the spectrum analyzer display on its screen?",
-                acceptedKeywords = new[] { "power", "amplitude", "frequency", "freq" },
-                explanation = "The spectrum analyzer plots signal power or amplitude on the vertical axis against frequency on the horizontal axis."
+                question = "What is the official 3GPP name for the next-generation 5G base station that manages radio resources and connects users to the core network?",
+                acceptedKeywords = new[] { "gnodeb", "g-node-b", "gnb", "next generation node b", "next-generation node b", "next gen node b" },
+                explanation = "gNodeB, or Next-Generation Node B, is the official 3GPP standard name for the 5G base station."
             };
-            yield return SpeakAndWait("Final check on Module 5: What two variables does the spectrum analyzer display on its screen? Hold down the V key and let me know!", "mod_line_14.wav");
-            yield return WaitForAnswerOrTimeout(8f);
+            yield return SpeakAndWait("Final knowledge check for Module 5! What is the official 3GPP name for the next-generation 5G base station that manages radio resources and connects users to the core network? Hold down the V key and give it a shot!", "mod5_gnodeb_2.wav");
+            yield return WaitForAnswerOrTimeout(10f);
+
+            yield return SpeakAndWait("Bingo! gNodeB, or next-generation Node B, is the true engine of 5G connectivity! Incredible job: you have now successfully completed all five modules in our virtual 5G lab, from the CUPS architecture and Use Cases banners to the Spectrometer, the Massive MIMO Antenna, and the gNodeB base station. Feel free to explore the lab freely, click any piece of equipment, or hold V to ask me anything anytime!", "mod5_gnodeb_3.wav");
         }
 
         private IEnumerator RunCourseCompletion()
@@ -600,10 +718,6 @@ namespace FiveGLab.VoiceAgent
             HideNextButton();
             PCInteractionTester.ExitCurrentInspection();
             yield return new WaitForSeconds(1.1f);
-
-            int score = VoiceAgentManager.Instance?.Memory?.QuizScore ?? 0;
-            int total = VoiceAgentManager.Instance?.Memory?.TotalQuizQuestions ?? 5;
-            yield return SpeakAndWait("Fantastic work! You have successfully finished all five modules in our 5G Lab! From the CUPS architecture and Use Cases banners on the wall to the gNodeB, the MEC edge servers, and the Spectrum Analyzer. Whenever you want to explore more or test your knowledge, just hold V and ask me anything!", "mod_line_15.wav");
 
             currentStep = ModuleStep.Completed;
             OnStepChanged?.Invoke(currentStep);

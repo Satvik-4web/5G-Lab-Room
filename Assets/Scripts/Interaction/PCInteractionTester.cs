@@ -272,6 +272,39 @@ public class PCInteractionTester : MonoBehaviour
                     Quaternion desiredCameraRot = Quaternion.Euler(0f, 90f, 0f);
                     targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
                 }
+                else if (AssociatedEquipmentId == EquipmentId.spectrum)
+                {
+                    // Perfectly frame the RF Spectrum Analyzer / Spectrometer on the lab bench
+                    Vector3 desiredCameraPos = new Vector3(1.473f, 1.18f, -0.70f);
+                    Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
+                    targetOriginPos = desiredCameraPos - cameraLocalOffset;
+
+                    Vector3 targetLook = new Vector3(1.473f, 0.93f, 0.127f);
+                    Quaternion desiredCameraRot = Quaternion.LookRotation(targetLook - desiredCameraPos);
+                    targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
+                }
+                else if (AssociatedEquipmentId == EquipmentId.gnodeb)
+                {
+                    // Perfectly frame the 5G Massive MIMO Antenna array at eye level on the tripod
+                    Vector3 desiredCameraPos = new Vector3(4.70f, 1.68f, -1.82f);
+                    Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
+                    targetOriginPos = desiredCameraPos - cameraLocalOffset;
+
+                    Vector3 targetLook = new Vector3(6.22f, 1.60f, -1.82f);
+                    Quaternion desiredCameraRot = Quaternion.LookRotation(targetLook - desiredCameraPos);
+                    targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
+                }
+                else if (AssociatedEquipmentId == EquipmentId.mec)
+                {
+                    // Perfectly frame the gNodeB Base Station & 5G Core processing rack
+                    Vector3 desiredCameraPos = new Vector3(2.81f, 1.45f, -4.80f);
+                    Vector3 cameraLocalOffset = Camera.main.transform.position - xrOrigin.position;
+                    targetOriginPos = desiredCameraPos - cameraLocalOffset;
+
+                    Vector3 targetLook = new Vector3(2.81f, 1.25f, -6.66f);
+                    Quaternion desiredCameraRot = Quaternion.LookRotation(targetLook - desiredCameraPos);
+                    targetOriginRot = desiredCameraRot * Quaternion.Inverse(Camera.main.transform.localRotation);
+                }
                 else
                 {
                     // Calculate zoom straight in from the camera's current viewing angle
