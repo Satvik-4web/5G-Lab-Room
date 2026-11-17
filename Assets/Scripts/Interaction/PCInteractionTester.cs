@@ -119,12 +119,28 @@ public class PCInteractionTester : MonoBehaviour
         TriggerInteraction();
     }
 
+    public static void StopAllCameraLerps()
+    {
+        if (currentZoomedInstance != null)
+        {
+            currentZoomedInstance.StopAllCoroutines();
+            currentZoomedInstance.CloseUI();
+            currentZoomedInstance.isZoomed = false;
+            currentZoomedInstance = null;
+        }
+        foreach (var kvp in Instances)
+        {
+            if (kvp.Value != null) kvp.Value.StopAllCoroutines();
+        }
+    }
+
     public static void InspectEquipment(EquipmentId id, bool playEquipmentAudio = false)
     {
         if (Instances.TryGetValue(id, out var tester))
         {
             if (currentZoomedInstance != null && currentZoomedInstance != tester)
             {
+                currentZoomedInstance.StopAllCoroutines();
                 currentZoomedInstance.CloseUI();
                 currentZoomedInstance.isZoomed = false;
                 currentZoomedInstance = null;
@@ -199,6 +215,11 @@ public class PCInteractionTester : MonoBehaviour
             }
 
             StopAllCoroutines();
+            if (xrOrigin == null)
+            {
+                GameObject originGO = GameObject.Find("XR Origin (VR)");
+                if (originGO != null) xrOrigin = originGO.transform;
+            }
             if (xrOrigin != null)
             {
                 Vector3 returnPos = hasSavedDefaultOrigin ? defaultOriginPos : originalOriginPos;
@@ -216,6 +237,12 @@ public class PCInteractionTester : MonoBehaviour
 
     public void TriggerInteraction(bool allowAudio)
     {
+        if (xrOrigin == null)
+        {
+            GameObject originGO = GameObject.Find("XR Origin (VR)");
+            if (originGO != null) xrOrigin = originGO.transform;
+        }
+
         if (xrOrigin != null && Camera.main != null)
         {
             if (!isZoomed)

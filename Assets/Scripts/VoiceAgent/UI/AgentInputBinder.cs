@@ -79,18 +79,6 @@ namespace FiveGLab.VoiceAgent
                 CheckQuickKeys();
             }
 
-            // Advance to Next Module with [N] or [Space]
-            bool nPressed = false;
-            if (Keyboard.current != null && (Keyboard.current.nKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame)) nPressed = true;
-            try { if (Input.GetKeyDown(KeyCode.N) || Input.GetKeyDown(KeyCode.Space)) nPressed = true; } catch { }
-
-            if (nPressed && !isTypingOpen)
-            {
-                if (GuidedTourController.Instance != null && GuidedTourController.Instance.IsTourActive)
-                {
-                    GuidedTourController.Instance.AdvanceToNextModule();
-                }
-            }
 
             // Microphone device switch key [M]
             bool mPressed = false;
@@ -171,8 +159,30 @@ namespace FiveGLab.VoiceAgent
 
         private void CheckQuickKeys()
         {
-            // Shortcuts for module selection [1]-[5], menu toggle [M], and Next [N]
-            // are handled centrally by AgentHUD and GuidedTourController.
+            bool k1 = false, k2 = false, k3 = false, k4 = false, k5 = false;
+            if (Keyboard.current != null)
+            {
+                k1 = Keyboard.current.digit1Key.wasPressedThisFrame;
+                k2 = Keyboard.current.digit2Key.wasPressedThisFrame;
+                k3 = Keyboard.current.digit3Key.wasPressedThisFrame;
+                k4 = Keyboard.current.digit4Key.wasPressedThisFrame;
+                k5 = Keyboard.current.digit5Key.wasPressedThisFrame;
+            }
+            try
+            {
+                if (Input.GetKeyDown(KeyCode.Alpha1)) k1 = true;
+                if (Input.GetKeyDown(KeyCode.Alpha2)) k2 = true;
+                if (Input.GetKeyDown(KeyCode.Alpha3)) k3 = true;
+                if (Input.GetKeyDown(KeyCode.Alpha4)) k4 = true;
+                if (Input.GetKeyDown(KeyCode.Alpha5)) k5 = true;
+            }
+            catch { }
+
+            if (k1) _ = manager.ProcessTypedInputAsync("Explain the 5G CUPS architecture banner on the wall");
+            if (k2) _ = manager.ProcessTypedInputAsync("Take me to the gNodeB base station");
+            if (k3) _ = manager.ProcessTypedInputAsync("Zoom in on the MEC core server rack");
+            if (k4) _ = manager.ProcessTypedInputAsync("Take me to the spectrum analyzer");
+            if (k5) _ = manager.ProcessTypedInputAsync("Start the 5G guided tour");
         }
 
         public void ToggleSpeechRecording()
