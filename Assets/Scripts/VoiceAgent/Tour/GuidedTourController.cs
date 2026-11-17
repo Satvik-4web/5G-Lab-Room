@@ -79,12 +79,53 @@ namespace FiveGLab.VoiceAgent
         private Transform xrOrigin;
         private Coroutine cameraGlideRoutine;
 
+        private GameObject equipmentFocusRing;
+        private LineRenderer equipmentFocusLine;
+
         public bool IsTourActive => currentStep != ModuleStep.NotStarted && currentStep != ModuleStep.Completed;
         public bool IsWaitingForNextButton => isWaitingForNextButton;
         public ModuleStep CurrentStep => currentStep;
         public int CurrentModuleIndex => currentModuleIndex;
 
         public event Action<ModuleStep> OnStepChanged;
+
+        public void FocusOnEquipment(Vector3 center, Vector3 size, Color color)
+        {
+            if (equipmentFocusRing == null)
+            {
+                equipmentFocusRing = new GameObject("Tour_EquipmentFocusRing");
+                equipmentFocusLine = equipmentFocusRing.AddComponent<LineRenderer>();
+                var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                equipmentFocusLine.material = new Material(shader);
+                equipmentFocusLine.useWorldSpace = false;
+                equipmentFocusLine.loop = true;
+                equipmentFocusLine.widthMultiplier = 0.022f;
+                equipmentFocusLine.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                equipmentFocusLine.receiveShadows = false;
+
+                int segments = 32;
+                equipmentFocusLine.positionCount = segments;
+                for (int i = 0; i < segments; i++)
+                {
+                    float angle = i * Mathf.PI * 2f / segments;
+                    equipmentFocusLine.SetPosition(i, new Vector3(Mathf.Cos(angle) * 0.5f, Mathf.Sin(angle) * 0.5f, 0f));
+                }
+            }
+
+            equipmentFocusRing.transform.position = center;
+            equipmentFocusRing.transform.localScale = size;
+            if (Camera.main != null)
+            {
+                equipmentFocusRing.transform.rotation = Quaternion.LookRotation(equipmentFocusRing.transform.position - Camera.main.transform.position);
+            }
+            equipmentFocusLine.material.color = color;
+            equipmentFocusRing.SetActive(true);
+        }
+
+        public void HideEquipmentFocus()
+        {
+            if (equipmentFocusRing != null) equipmentFocusRing.SetActive(false);
+        }
 
         private void Awake()
         {
@@ -109,29 +150,59 @@ namespace FiveGLab.VoiceAgent
         private void Update()
         {
             // Global keyboard advance shortcut: [N], [Space]
-            if (IsTourActive)
+            bool nPressed = false;
+            if (Keyboard.current != null)
             {
-                bool nPressed = false;
-                if (Keyboard.current != null)
+                if (Keyboard.current.nKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame)
                 {
-                    if (Keyboard.current.nKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame)
-                    {
-                        nPressed = true;
-                    }
+                    nPressed = true;
                 }
-                try
+            }
+            try
+            {
+                if (Input.GetKeyDown(KeyCode.N) || Input.GetKeyDown(KeyCode.Space))
                 {
-                    if (Input.GetKeyDown(KeyCode.N) || Input.GetKeyDown(KeyCode.Space))
-                    {
-                        nPressed = true;
-                    }
+                    nPressed = true;
                 }
-                catch { }
+            }
+            catch { }
 
-                if (nPressed)
-                {
-                    AdvanceToNextModule();
-                }
+            if (nPressed)
+            {
+                AdvanceToNextModule();
+            }
+
+            // Direct module jump keys [1] - [5]
+            int numKey = -1;
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.digit1Key.wasPressedThisFrame) numKey = 1;
+                else if (Keyboard.current.digit2Key.wasPressedThisFrame) numKey = 2;
+                else if (Keyboard.current.digit3Key.wasPressedThisFrame) numKey = 3;
+                else if (Keyboard.current.digit4Key.wasPressedThisFrame) numKey = 4;
+                else if (Keyboard.current.digit5Key.wasPressedThisFrame) numKey = 5;
+            }
+            try
+            {
+                if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1)) numKey = 1;
+                else if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2)) numKey = 2;
+                else if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3)) numKey = 3;
+                else if (Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Keypad4)) numKey = 4;
+                else if (Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5)) numKey = 5;
+            }
+            catch { }
+
+            if (numKey >= 1 && numKey <= 5)
+            {
+                JumpToModule(numKey);
+            }
+
+            // Billboard 3D focus ring towards camera
+            if (equipmentFocusRing != null && equipmentFocusRing.activeSelf && Camera.main != null)
+            {
+                equipmentFocusRing.transform.rotation = Quaternion.LookRotation(equipmentFocusRing.transform.position - Camera.main.transform.position);
+                float pulse = 1f + 0.08f * Mathf.Sin(Time.unscaledTime * 5f);
+                if (equipmentFocusLine != null) equipmentFocusLine.widthMultiplier = 0.022f * pulse;
             }
         }
 
@@ -159,10 +230,10 @@ namespace FiveGLab.VoiceAgent
 
         public void AdvanceToNextModule()
         {
-            if (Time.unscaledTime - lastAdvanceTime < 0.4f) return;
+            if (Time.unscaledTime - lastAdvanceTime < 0.55f) return;
             lastAdvanceTime = Time.unscaledTime;
 
-            if (currentModuleIndex <= 0)
+            if (currentModuleIndex <= 0 || currentStep == ModuleStep.NotStarted)
             {
                 JumpToModule(1);
             }
@@ -196,7 +267,7 @@ namespace FiveGLab.VoiceAgent
 
         public void JumpToModule(int targetModule)
         {
-            if (Time.unscaledTime - lastAdvanceTime < 0.25f && targetModule == currentModuleIndex) return;
+            if (Time.unscaledTime - lastAdvanceTime < 0.35f && targetModule == currentModuleIndex) return;
             lastAdvanceTime = Time.unscaledTime;
 
             tourSessionId++;
@@ -221,7 +292,8 @@ namespace FiveGLab.VoiceAgent
             isWaitingForNextButton = false;
 
             // Reset banner positions, laser reticles, and ensure all equipment is active
-            ResetAllBannersAndEquipment();
+            ResetAllBannersAndEquipment(targetModule >= 3);
+            HideEquipmentFocus();
 
             if (VoiceAgentManager.Instance != null)
             {
@@ -267,9 +339,13 @@ namespace FiveGLab.VoiceAgent
             OnStepChanged?.Invoke(currentStep);
 
             // Pop Banner 1 forward and glide camera for crystal-clear view
-            CupsBannerDisplay.Instance?.SetPopUpState(true);
-            CupsBannerDisplay.Instance?.SetHighlightSection("all");
-            CupsBannerDisplay.Instance?.HideTargetElement();
+            var cups = CupsBannerDisplay.Instance;
+            if (cups != null)
+            {
+                cups.SetPopUpState(true);
+                cups.SetHighlightSection("all");
+                cups.HideTargetElement();
+            }
 
             // Camera: (2.10, 1.95, -1.80) facing +X
             GlideCameraTo(new Vector3(2.10f, 1.95f, -1.80f), Quaternion.Euler(0f, 90f, 0f), 1.2f);
@@ -284,40 +360,55 @@ namespace FiveGLab.VoiceAgent
             // Step A: UE
             currentStep = ModuleStep.Module1_Banner_UE;
             OnStepChanged?.Invoke(currentStep);
-            CupsBannerDisplay.Instance?.SetHighlightSection("ue");
-            CupsBannerDisplay.Instance?.HideTargetElement();
+            if (cups != null)
+            {
+                cups.SetHighlightSection("ue");
+                cups.HideTargetElement();
+            }
             yield return SpeakAndWait("First, let's look at the left column under UE, or User Equipment. 5G isn't just for phones—it connects IoT drones at the top, autonomous self-driving cars, handheld smartphones, and enterprise workstations. Notice how every single device starts its journey right here.", "mod_line_1.wav");
             if (session != tourSessionId) yield break;
 
             // Step B: Access Network
             currentStep = ModuleStep.Module1_Banner_Access;
             OnStepChanged?.Invoke(currentStep);
-            CupsBannerDisplay.Instance?.SetHighlightSection("access");
-            CupsBannerDisplay.Instance?.HideTargetElement();
+            if (cups != null)
+            {
+                cups.SetHighlightSection("access");
+                cups.HideTargetElement();
+            }
             yield return SpeakAndWait("Right next to the devices is the Access Network column. They connect through 5G New Radio base stations, existing 4G LTE towers, and even home Wi-Fi and wired fiber. Everything plugs into the network through one of these radio links.", "mod_line_2.wav");
             if (session != tourSessionId) yield break;
 
             // Step C: Control Plane
             currentStep = ModuleStep.Module1_Banner_ControlPlane;
             OnStepChanged?.Invoke(currentStep);
-            CupsBannerDisplay.Instance?.SetHighlightSection("control");
-            CupsBannerDisplay.Instance?.SetTargetElement("cp_amf_smf");
+            if (cups != null)
+            {
+                cups.SetHighlightSection("control");
+                cups.SetTargetElement("cp_amf_smf");
+            }
             yield return SpeakAndWait("Now, look up at the top box highlighted in gold. That's the 5G Control Plane. Think of this as the brain. You've got the AMF tracking your device as you move around, the SMF setting up your data sessions, and the UDM verifying your SIM. But here's the golden rule of CUPS: this entire top box only handles signaling instructions. It never touches your actual videos, downloads, or user data packets.", "mod_line_3.wav");
             if (session != tourSessionId) yield break;
 
             // Step D: User Plane
             currentStep = ModuleStep.Module1_Banner_UserPlane_CUPS;
             OnStepChanged?.Invoke(currentStep);
-            CupsBannerDisplay.Instance?.SetHighlightSection("user_plane");
-            CupsBannerDisplay.Instance?.SetTargetElement("up_localdn");
+            if (cups != null)
+            {
+                cups.SetHighlightSection("user_plane");
+                cups.SetTargetElement("up_localdn");
+            }
             yield return SpeakAndWait("Down below, in green, is the 5G User Plane. This is the muscle that carries all your data. Instead of routing traffic all the way to a distant cloud server, 5G distributes these lightweight UPFs right to the edge of the network. See that Local DN icon at the bottom? User data can break out right here to a local server in under one millisecond! That's the secret to zero-lag gaming, real-time robotics, and safe autonomous driving.", "mod_line_4.wav");
             if (session != tourSessionId) yield break;
 
             // Module 1 Quiz
             currentStep = ModuleStep.Module1_Quiz;
             OnStepChanged?.Invoke(currentStep);
-            CupsBannerDisplay.Instance?.SetHighlightSection("none");
-            CupsBannerDisplay.Instance?.HideTargetElement();
+            if (cups != null)
+            {
+                cups.SetHighlightSection("none");
+                cups.HideTargetElement();
+            }
             currentQuizQuestion = new QuizQuestion
             {
                 question = "On this poster, which edge function actually forwards the user data to give us that sub-millisecond local speed?",
@@ -347,9 +438,13 @@ namespace FiveGLab.VoiceAgent
             OnStepChanged?.Invoke(currentStep);
 
             // Pop Banner 2 forward and glide camera into front alignment
-            UseCasesBannerDisplay.EnsureInstance()?.SetPopUpState(true);
-            UseCasesBannerDisplay.Instance?.SetHighlightSection("all");
-            UseCasesBannerDisplay.Instance?.HideTargetElement();
+            var useCases = UseCasesBannerDisplay.EnsureInstance();
+            if (useCases != null)
+            {
+                useCases.SetPopUpState(true);
+                useCases.SetHighlightSection("all");
+                useCases.HideTargetElement();
+            }
 
             // Camera: (2.10, 1.95, 3.10) facing +X
             GlideCameraTo(new Vector3(2.10f, 1.95f, 3.10f), Quaternion.Euler(0f, 90f, 0f), 1.2f);
@@ -364,32 +459,44 @@ namespace FiveGLab.VoiceAgent
             // Step A: eMBB
             currentStep = ModuleStep.Module2_UseCases_eMBB;
             OnStepChanged?.Invoke(currentStep);
-            UseCasesBannerDisplay.Instance?.SetHighlightSection("embb");
-            UseCasesBannerDisplay.Instance?.SetTargetElement("embb_vr");
+            if (useCases != null)
+            {
+                useCases.SetHighlightSection("embb");
+                useCases.SetTargetElement("embb_vr");
+            }
             yield return SpeakAndWait("Up first in electric cyan is eMBB, or Enhanced Mobile Broadband. Think of this as the ultimate superhighway for raw speed and bandwidth. We're talking up to 20 Gigabits per second! Notice the apps highlighted here: it powers lag-free 8K streaming, immersive virtual and augmented reality worlds, and fiber-speed fixed wireless for our homes—even if you're cruising on a high-speed train at 500 kilometers an hour.", "usecases_line_1.wav");
             if (session != tourSessionId) yield break;
 
             // Step B: mMTC
             currentStep = ModuleStep.Module2_UseCases_mMTC;
             OnStepChanged?.Invoke(currentStep);
-            UseCasesBannerDisplay.Instance?.SetHighlightSection("mmtc");
-            UseCasesBannerDisplay.Instance?.SetTargetElement("mmtc_smartcities");
+            if (useCases != null)
+            {
+                useCases.SetHighlightSection("mmtc");
+                useCases.SetTargetElement("mmtc_smartcities");
+            }
             yield return SpeakAndWait("Next, look at the middle green tier: mMTC, which stands for Massive Machine-Type Communication. If eMBB is a superhighway for fast cars, mMTC is a giant stadium parking lot. It isn't about peak speed; it's engineered to connect up to one million smart devices in a single square kilometer! Imagine city water meters, smart agriculture sensors, and wearable fitness trackers that can quietly run on a single tiny coin battery for more than ten years.", "usecases_line_2.wav");
             if (session != tourSessionId) yield break;
 
             // Step C: uRLLC
             currentStep = ModuleStep.Module2_UseCases_uRLLC;
             OnStepChanged?.Invoke(currentStep);
-            UseCasesBannerDisplay.Instance?.SetHighlightSection("urllc");
-            UseCasesBannerDisplay.Instance?.SetTargetElement("urllc_surgery");
+            if (useCases != null)
+            {
+                useCases.SetHighlightSection("urllc");
+                useCases.SetTargetElement("urllc_surgery");
+            }
             yield return SpeakAndWait("And down at the bottom in coral red is 5G's most critical superpower: uRLLC, or Ultra-Reliable Low Latency Communication. This is the life-saver. It slashes network delay to under one millisecond with ninety-nine point nine-nine-nine percent reliability! Look at the robotic surgery and autonomous vehicle icons highlighted here: when a surgeon operates on a patient from across the world, or self-driving cars coordinate split-second emergency braking, every microsecond counts.", "usecases_line_3.wav");
             if (session != tourSessionId) yield break;
 
             // Module 2 Quiz
             currentStep = ModuleStep.Module2_UseCases_Quiz;
             OnStepChanged?.Invoke(currentStep);
-            UseCasesBannerDisplay.Instance?.SetHighlightSection("none");
-            UseCasesBannerDisplay.Instance?.HideTargetElement();
+            if (useCases != null)
+            {
+                useCases.SetHighlightSection("none");
+                useCases.HideTargetElement();
+            }
             currentQuizQuestion = new QuizQuestion
             {
                 question = "If a surgeon is performing a delicate remote robotic surgery from another city, which of the three 5G pillars makes that life-saving precision possible?",
@@ -402,7 +509,7 @@ namespace FiveGLab.VoiceAgent
             yield return WaitForAnswerOrTimeout(8f, session);
             if (session != tourSessionId) yield break;
 
-            UseCasesBannerDisplay.Instance?.SetPopUpState(false);
+            if (useCases != null) useCases.SetPopUpState(false);
             ShowNextButton("NEXT: MODULE 3 (SPECTROMETER) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule3());
             yield return SpeakAndWait("Outstanding job on Use Cases! Whenever you're ready, click Next or press N to head to Module 3 and check out our lab Spectrometer.");
             if (session != tourSessionId) yield break;
@@ -418,12 +525,12 @@ namespace FiveGLab.VoiceAgent
             currentStep = ModuleStep.Module3_Spectrum_Intro;
             OnStepChanged?.Invoke(currentStep);
 
-            // Banners stay on walls, glide camera directly to the Spectrum Analyzer on the workbench
+            // Banners stay on walls, glide camera directly in front of Spectrum Analyzer workbench
             Vector3 camPos = new Vector3(1.473f, 1.25f, -0.65f);
-            Vector3 targetLook = new Vector3(1.473f, 0.92f, 0.127f);
-            Quaternion camRot = Quaternion.LookRotation(targetLook - camPos);
+            Quaternion camRot = Quaternion.Euler(0f, 0f, 0f);
 
             GlideCameraTo(camPos, camRot, 1.4f);
+            FocusOnEquipment(new Vector3(1.473f, 0.95f, 0.127f), new Vector3(0.55f, 0.40f, 1f), new Color(0f, 0.95f, 1f, 0.90f));
             ShowNextButton("NEXT: MODULE 4 (ANTENNA) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule4());
 
             yield return new WaitForSeconds(0.8f);
@@ -468,11 +575,11 @@ namespace FiveGLab.VoiceAgent
             OnStepChanged?.Invoke(currentStep);
 
             // Camera frames the massive MIMO antenna on tripod at eye level
-            Vector3 camPos = new Vector3(4.60f, 1.68f, -1.82f);
-            Vector3 targetLook = new Vector3(6.22f, 1.62f, -1.82f);
-            Quaternion camRot = Quaternion.LookRotation(targetLook - camPos);
+            Vector3 camPos = new Vector3(4.40f, 1.65f, -1.82f);
+            Quaternion camRot = Quaternion.Euler(0f, 90f, 0f);
 
             GlideCameraTo(camPos, camRot, 1.4f);
+            FocusOnEquipment(new Vector3(6.22f, 1.62f, -1.82f), new Vector3(0.70f, 0.70f, 1f), new Color(0f, 0.95f, 1f, 0.90f));
             ShowNextButton("NEXT: MODULE 5 (GNODEB) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule5());
 
             yield return new WaitForSeconds(0.8f);
@@ -517,11 +624,11 @@ namespace FiveGLab.VoiceAgent
             OnStepChanged?.Invoke(currentStep);
 
             // Camera frames the gNodeB base station & core processing server rack
-            Vector3 camPos = new Vector3(2.81f, 1.45f, -4.80f);
-            Vector3 targetLook = new Vector3(2.81f, 1.25f, -6.66f);
-            Quaternion camRot = Quaternion.LookRotation(targetLook - camPos);
+            Vector3 camPos = new Vector3(2.81f, 1.55f, -4.60f);
+            Quaternion camRot = Quaternion.Euler(0f, 180f, 0f);
 
             GlideCameraTo(camPos, camRot, 1.4f);
+            FocusOnEquipment(new Vector3(2.81f, 1.25f, -6.66f), new Vector3(0.95f, 1.80f, 1f), new Color(0f, 0.95f, 1f, 0.90f));
             ShowNextButton("FINISH LAB TOUR >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToCompletion());
 
             yield return new WaitForSeconds(0.8f);
@@ -565,6 +672,7 @@ namespace FiveGLab.VoiceAgent
             currentStep = ModuleStep.RecapAndWrapUp;
             OnStepChanged?.Invoke(currentStep);
             HideNextButton();
+            HideEquipmentFocus();
 
             // Return camera smoothly to default open roaming perspective
             GlideCameraTo(new Vector3(3.5f, 1.70f, 0.0f), Quaternion.Euler(0f, 0f, 0f), 1.5f);
@@ -599,12 +707,20 @@ namespace FiveGLab.VoiceAgent
                 if (originGO != null) xrOrigin = originGO.transform;
             }
 
-            if (xrOrigin == null || Camera.main == null) yield break;
+            if (xrOrigin == null) yield break;
 
-            Transform cam = Camera.main.transform;
-            Vector3 cameraLocalOffset = cam.position - xrOrigin.position;
-            Vector3 targetOriginPos = desiredCamPos - cameraLocalOffset;
-            Quaternion targetOriginRot = desiredCamRot * Quaternion.Inverse(cam.localRotation);
+            // Stop any competing lerp routines on PCInteractionTester
+            PCInteractionTester.StopAllCameraLerps();
+
+            Transform cam = Camera.main != null ? Camera.main.transform : null;
+            float eyeHeight = 1.1176f;
+            if (cam != null && cam.position.y - xrOrigin.position.y > 0.4f && cam.position.y - xrOrigin.position.y < 2.5f)
+            {
+                eyeHeight = cam.position.y - xrOrigin.position.y;
+            }
+
+            Vector3 targetOriginPos = new Vector3(desiredCamPos.x, desiredCamPos.y - eyeHeight, desiredCamPos.z);
+            Quaternion targetOriginRot = Quaternion.Euler(0f, desiredCamRot.eulerAngles.y, 0f);
 
             Vector3 startPos = xrOrigin.position;
             Quaternion startRot = xrOrigin.rotation;
@@ -626,17 +742,25 @@ namespace FiveGLab.VoiceAgent
             cameraGlideRoutine = null;
         }
 
-        private void ResetAllBannersAndEquipment()
+        private void ResetAllBannersAndEquipment(bool instant = false)
         {
             EnsureAllEquipmentActive();
 
-            CupsBannerDisplay.Instance?.SetHighlightSection("none");
-            CupsBannerDisplay.Instance?.HideTargetElement();
-            CupsBannerDisplay.Instance?.SetPopUpState(false);
+            var cups = CupsBannerDisplay.Instance;
+            if (cups != null)
+            {
+                cups.SetHighlightSection("none");
+                cups.HideTargetElement();
+                cups.SetPopUpState(false, instant);
+            }
 
-            UseCasesBannerDisplay.Instance?.SetHighlightSection("none");
-            UseCasesBannerDisplay.Instance?.HideTargetElement();
-            UseCasesBannerDisplay.Instance?.SetPopUpState(false);
+            var useCases = UseCasesBannerDisplay.Instance;
+            if (useCases != null)
+            {
+                useCases.SetHighlightSection("none");
+                useCases.HideTargetElement();
+                useCases.SetPopUpState(false, instant);
+            }
         }
 
         private GameObject cachedGNodeB;
@@ -803,7 +927,7 @@ namespace FiveGLab.VoiceAgent
             tourSessionId++;
             StopAllCoroutines();
             HideNextButton();
-            ResetAllBannersAndEquipment();
+            HideEquipmentFocus();
         }
     }
 }

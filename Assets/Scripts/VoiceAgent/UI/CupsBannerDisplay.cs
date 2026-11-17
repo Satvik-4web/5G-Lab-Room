@@ -15,7 +15,16 @@ namespace FiveGLab.VoiceAgent
     /// </summary>
     public class CupsBannerDisplay : MonoBehaviour
     {
-        public static CupsBannerDisplay Instance { get; private set; }
+        private static CupsBannerDisplay _instance;
+        public static CupsBannerDisplay Instance
+        {
+            get
+            {
+                if (_instance == null) _instance = FindFirstObjectByType<CupsBannerDisplay>();
+                return _instance != null ? _instance : null;
+            }
+            private set => _instance = value;
+        }
 
         [Header("Banner Presentation Transform")]
         private Vector3 wallRestPosition;
@@ -266,14 +275,28 @@ namespace FiveGLab.VoiceAgent
             HideTargetElement();
         }
 
-        public void SetPopUpState(bool popUp)
+        public void SetPopUpState(bool popUp, bool instant = false)
         {
             isPopped = popUp;
-            if (popRoutine != null) StopCoroutine(popRoutine);
+            if (popRoutine != null)
+            {
+                StopCoroutine(popRoutine);
+                popRoutine = null;
+            }
 
             Vector3 targetPos = popUp ? poppedPosition : wallRestPosition;
             Quaternion targetRot = popUp ? poppedRotation : wallRestRotation;
-            popRoutine = StartCoroutine(LerpTransformRoutine(targetPos, targetRot, popDuration));
+
+            if (instant)
+            {
+                transform.position = targetPos;
+                transform.rotation = targetRot;
+                transform.localScale = bannerScale;
+            }
+            else
+            {
+                popRoutine = StartCoroutine(LerpTransformRoutine(targetPos, targetRot, popDuration));
+            }
 
             if (!popUp)
             {
@@ -370,8 +393,7 @@ namespace FiveGLab.VoiceAgent
         {
             if (popRoutine != null) StopCoroutine(popRoutine);
             if (pulseRoutine != null) StopCoroutine(pulseRoutine);
-            transform.position = wallRestPosition;
-            transform.rotation = wallRestRotation;
+            if (_instance == this) _instance = null;
         }
     }
 }

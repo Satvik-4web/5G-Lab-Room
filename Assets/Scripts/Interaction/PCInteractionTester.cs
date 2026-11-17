@@ -116,6 +116,13 @@ public class PCInteractionTester : MonoBehaviour
 
     void OnMouseDown()
     {
+        // Never hijack the camera if the guided tour is actively running!
+        if (FiveGLab.VoiceAgent.GuidedTourController.Instance != null &&
+            FiveGLab.VoiceAgent.GuidedTourController.Instance.IsTourActive)
+        {
+            return;
+        }
+
         TriggerInteraction();
     }
 

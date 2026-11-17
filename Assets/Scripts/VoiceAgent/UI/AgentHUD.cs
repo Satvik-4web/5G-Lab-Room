@@ -383,34 +383,6 @@ namespace FiveGLab.VoiceAgent
                 }
             }
 
-            // Keyboard shortcuts to advance tour: [N], [Space], [Enter]
-            if (isNextButtonActive)
-            {
-                bool advancePressed = false;
-                if (Keyboard.current != null)
-                {
-                    if (Keyboard.current.nKey.wasPressedThisFrame ||
-                        Keyboard.current.spaceKey.wasPressedThisFrame ||
-                        Keyboard.current.enterKey.wasPressedThisFrame)
-                    {
-                        advancePressed = true;
-                    }
-                }
-                try
-                {
-                    if (Input.GetKeyDown(KeyCode.N) || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
-                    {
-                        advancePressed = true;
-                    }
-                }
-                catch { }
-
-                if (advancePressed)
-                {
-                    TriggerNext();
-                }
-            }
-
             AgentState state = VoiceAgentManager.Instance != null ? VoiceAgentManager.Instance.CurrentState : AgentState.Idle;
 
             // 1. Reactive audio RMS calculation
@@ -641,9 +613,15 @@ namespace FiveGLab.VoiceAgent
                     nextButtonRoot = allNextButtons[0];
                     for (int i = 1; i < allNextButtons.Count; i++)
                     {
-                        Destroy(allNextButtons[i]);
+                        if (Application.isPlaying) Destroy(allNextButtons[i]);
+                        else DestroyImmediate(allNextButtons[i]);
                     }
                     nextButton = nextButtonRoot.GetComponent<Button>();
+                    if (nextButton != null)
+                    {
+                        nextButton.onClick.RemoveAllListeners();
+                        nextButton.onClick.AddListener(OnNextButtonClicked);
+                    }
                     nextButtonBg = nextButtonRoot.GetComponent<Image>();
                     nextButtonOutline = nextButtonRoot.GetComponent<Outline>();
                     nextButtonText = nextButtonRoot.GetComponentInChildren<TextMeshProUGUI>();
@@ -730,7 +708,14 @@ namespace FiveGLab.VoiceAgent
 
         private void OnNextButtonClicked()
         {
-            TriggerNext();
+            if (GuidedTourController.Instance != null && GuidedTourController.Instance.IsTourActive)
+            {
+                GuidedTourController.Instance.AdvanceToNextModule();
+            }
+            else
+            {
+                TriggerNext();
+            }
         }
 
         private float lastNextTriggerTime = 0f;
@@ -738,7 +723,7 @@ namespace FiveGLab.VoiceAgent
         public void TriggerNext()
         {
             if (!isNextButtonActive) return;
-            if (Time.unscaledTime - lastNextTriggerTime < 0.35f) return;
+            if (Time.unscaledTime - lastNextTriggerTime < 0.6f) return;
             lastNextTriggerTime = Time.unscaledTime;
 
             var action = onNextClickAction;

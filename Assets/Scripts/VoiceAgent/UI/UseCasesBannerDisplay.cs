@@ -15,7 +15,16 @@ namespace FiveGLab.VoiceAgent
     /// </summary>
     public class UseCasesBannerDisplay : MonoBehaviour
     {
-        public static UseCasesBannerDisplay Instance { get; private set; }
+        private static UseCasesBannerDisplay _instance;
+        public static UseCasesBannerDisplay Instance
+        {
+            get
+            {
+                if (_instance == null) _instance = FindFirstObjectByType<UseCasesBannerDisplay>();
+                return _instance != null ? _instance : null;
+            }
+            private set => _instance = value;
+        }
 
         public static UseCasesBannerDisplay EnsureInstance()
         {
@@ -288,12 +297,26 @@ namespace FiveGLab.VoiceAgent
             }
         }
 
-        public void SetPopUpState(bool pop)
+        public void SetPopUpState(bool pop, bool instant = false)
         {
             isPopped = pop;
 
-            if (popRoutine != null) StopCoroutine(popRoutine);
-            popRoutine = StartCoroutine(AnimatePopUp(pop));
+            if (popRoutine != null)
+            {
+                StopCoroutine(popRoutine);
+                popRoutine = null;
+            }
+
+            if (instant)
+            {
+                transform.position = pop ? poppedPosition : wallRestPosition;
+                transform.rotation = pop ? poppedRotation : wallRestRotation;
+                transform.localScale = bannerScale;
+            }
+            else
+            {
+                popRoutine = StartCoroutine(AnimatePopUp(pop));
+            }
         }
 
         private IEnumerator AnimatePopUp(bool pop)
@@ -320,6 +343,13 @@ namespace FiveGLab.VoiceAgent
             transform.rotation = targetRot;
             transform.localScale = bannerScale;
             popRoutine = null;
+        }
+
+        private void OnDestroy()
+        {
+            if (popRoutine != null) StopCoroutine(popRoutine);
+            if (pulseRoutine != null) StopCoroutine(pulseRoutine);
+            if (_instance == this) _instance = null;
         }
     }
 }
