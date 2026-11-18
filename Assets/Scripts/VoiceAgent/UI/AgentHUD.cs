@@ -37,6 +37,15 @@ namespace FiveGLab.VoiceAgent
         [Header("Waveform Visualizer")]
         [SerializeField] private RectTransform[] waveBars;
 
+        [Header("Guided Tour Visuals")]
+        [SerializeField] private GameObject conceptCardRoot;
+        [SerializeField] private TextMeshProUGUI conceptTitleText;
+        [SerializeField] private TextMeshProUGUI conceptCaptionText;
+        [SerializeField] private Image[] conceptNodeImages;
+        [SerializeField] private TextMeshProUGUI[] conceptNodeTexts;
+        [SerializeField] private RectTransform[] conceptNodeRects;
+        [SerializeField] private TextMeshProUGUI[] conceptArrows;
+
         private MicrophoneCapture micCapture;
         private AgentSpeaker speaker;
         private AudioSource speakerAudio;
@@ -49,6 +58,13 @@ namespace FiveGLab.VoiceAgent
         private bool isCinemaSubtitleMode = false;
         private System.Action onNextClickAction;
         private bool isNextButtonActive = false;
+        private CanvasGroup subtitleCanvasGroup;
+        private RectTransform subtitleRect;
+        private CanvasGroup conceptCanvasGroup;
+        private Coroutine conceptIntroRoutine;
+        private int conceptNodeCount;
+        private Vector3 defaultHudScale = Vector3.one * 0.0016f;
+        private bool hasCapturedHudScale;
 
         public bool IsCinemaSubtitleMode => isCinemaSubtitleMode;
         public bool IsNextButtonActive => isNextButtonActive;
@@ -58,8 +74,19 @@ namespace FiveGLab.VoiceAgent
 
         private void Awake()
         {
-            if (Instance == null) Instance = this;
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            Instance = this;
             EnsureUIStructure();
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
         }
 
         private void Start()
@@ -91,7 +118,11 @@ namespace FiveGLab.VoiceAgent
             switch (state)
             {
                 case AgentState.Idle:
-                    statusText.text = $"<color=#00E5FF><b>● ARIA</b></color> <color=#94A3B8>| 5G AI Tutor</color> <color=#475569>•</color> <color=#CBD5E1>Hold [V] to Talk</color> <color=#475569>•</color> <color=#94A3B8>[M] {micName}</color> <color=#475569>•</color> <color=#94A3B8>[1] Tour</color>";
+#if UNITY_ANDROID && !UNITY_EDITOR
+                    statusText.text = "<color=#00E5FF><b>ARIA</b></color>  <color=#CBD5E1>A: Next  |  X: Tour  |  Right grip: Speak</color>";
+#else
+                    statusText.text = $"<color=#00E5FF><b>ARIA</b></color> <color=#94A3B8>| 5G AI Tutor</color>  <color=#CBD5E1>Hold [V] while speaking</color>  <color=#94A3B8>[M] {micName}  |  [1] Tour</color>";
+#endif
                     if (topAccentLine != null) topAccentLine.color = new Color(0f, 0.9f, 1f, 0.8f);
                     if (levelMeterBar != null)
                     {
@@ -101,30 +132,34 @@ namespace FiveGLab.VoiceAgent
                     break;
 
                 case AgentState.Listening:
-                    statusText.text = $"<color=#00E676><b>● RECORDING</b></color> <color=#00E676><b>| Listening on {micName}... Speak now! [V] Stop</b></color>";
+#if UNITY_ANDROID && !UNITY_EDITOR
+                    statusText.text = $"<color=#00E676><b>LISTENING</b></color> <color=#E2E8F0>| Press right grip again to send</color> <color=#94A3B8>({micName})</color>";
+#else
+                    statusText.text = $"<color=#00E676><b>LISTENING</b></color> <color=#E2E8F0>| Speak, then release [V] or tap again to send</color> <color=#94A3B8>({micName})</color>";
+#endif
                     if (topAccentLine != null) topAccentLine.color = new Color(0f, 1f, 0.45f, 1f);
                     if (levelMeterBar != null) levelMeterBar.color = new Color(0f, 1f, 0.45f, 1f);
                     break;
 
                 case AgentState.Transcribing:
-                    statusText.text = "<color=#FFD54F><b>● PROCESSING</b></color> <color=#FFD54F><b>| Transcribing your speech...</b></color>";
+                    statusText.text = "<color=#FFD54F><b>PROCESSING</b></color> <color=#E2E8F0>| Converting your speech to text...</color>";
                     if (topAccentLine != null) topAccentLine.color = new Color(1f, 0.83f, 0.31f, 1f);
                     if (levelMeterBar != null) levelMeterBar.fillAmount = 0.05f;
                     break;
 
                 case AgentState.Thinking:
-                    statusText.text = "<color=#FFD54F><b>● THINKING</b></color> <color=#FFD54F>| Consulting 5G Knowledge Brain...</color>";
+                    statusText.text = "<color=#FFD54F><b>THINKING</b></color> <color=#E2E8F0>| Aria is preparing a reply...</color>";
                     if (topAccentLine != null) topAccentLine.color = new Color(1f, 0.83f, 0.31f, 1f);
                     break;
 
                 case AgentState.Speaking:
-                    statusText.text = "<color=#40C4FF><b>● SPEAKING</b></color> <color=#E2E8F0>| Aria (5G Voice Tutor)</color>";
+                    statusText.text = "<color=#40C4FF><b>ARIA SPEAKING</b></color> <color=#E2E8F0>| Hold [V] to interrupt</color>";
                     if (topAccentLine != null) topAccentLine.color = new Color(0.25f, 0.77f, 1f, 1f);
                     if (levelMeterBar != null) levelMeterBar.color = new Color(0.25f, 0.77f, 1f, 0.8f);
                     break;
 
                 case AgentState.Touring:
-                    statusText.text = "<color=#00E5FF><b>● GUIDED TOUR</b></color> <color=#94A3B8>| 5G Interactive Lab Walkthrough</color>";
+                    statusText.text = "<color=#00E5FF><b>GUIDED TOUR</b></color> <color=#94A3B8>| 5G Interactive Lab Walkthrough</color>";
                     if (topAccentLine != null) topAccentLine.color = new Color(0f, 0.9f, 1f, 1f);
                     break;
             }
@@ -137,6 +172,8 @@ namespace FiveGLab.VoiceAgent
             if (subtitleText != null)
             {
                 subtitleText.text = $"<color=#8AB4F8><b>YOU:</b></color> <color=#FFFFFF>\"{query}\"</color>\n<color=#B0BEC5><i>Aria is thinking...</i></color>";
+                subtitleText.maxVisibleCharacters = int.MaxValue;
+                if (subtitleCanvasGroup != null) subtitleCanvasGroup.alpha = 1f;
             }
             if (subtitleFadeRoutine != null) StopCoroutine(subtitleFadeRoutine);
             subtitleFadeRoutine = StartCoroutine(ClearSubtitleAfterDelay(16f));
@@ -145,6 +182,7 @@ namespace FiveGLab.VoiceAgent
         public void SetCinemaSubtitleMode(bool enabled)
         {
             isCinemaSubtitleMode = enabled;
+            if (!enabled) HideModuleConcept();
             if (avatarOrb != null) avatarOrb.gameObject.SetActive(!enabled);
             if (topAccentLine != null) topAccentLine.enabled = !enabled;
             if (levelMeterBar != null) levelMeterBar.enabled = !enabled;
@@ -165,10 +203,15 @@ namespace FiveGLab.VoiceAgent
                 {
                     if (enabled)
                     {
-                        rect.sizeDelta = new Vector2(880, 88);
+#if UNITY_ANDROID && !UNITY_EDITOR
+                          rect.localScale = Vector3.one * 0.00105f;
+#else
+                          rect.localScale = Vector3.one * 0.00072f;
+#endif
+                        rect.sizeDelta = new Vector2(880, 112);
                         if (backgroundImage != null)
                         {
-                            backgroundImage.color = new Color(0.02f, 0.04f, 0.07f, 0.92f);
+                            backgroundImage.color = new Color(0.018f, 0.032f, 0.052f, 0.96f);
                         }
                         if (topAccentLine != null)
                         {
@@ -186,24 +229,49 @@ namespace FiveGLab.VoiceAgent
                         }
                         if (subtitleText != null)
                         {
-                            subtitleText.fontSize = 24;
+                            subtitleText.fontSize = 21;
                             subtitleText.fontStyle = FontStyles.Bold;
                             subtitleText.alignment = TextAlignmentOptions.Center;
-                            subtitleText.lineSpacing = 10f;
+                            subtitleText.lineSpacing = 1f;
                             var sRect = subtitleText.GetComponent<RectTransform>();
                             if (sRect != null)
                             {
-                                sRect.anchorMin = Vector2.zero;
-                                sRect.anchorMax = Vector2.one;
-                                sRect.offsetMin = new Vector2(24, 6);
-                                sRect.offsetMax = new Vector2(-24, -6);
+                                sRect.anchorMin = new Vector2(0.035f, 0.08f);
+                                sRect.anchorMax = new Vector2(0.965f, 0.92f);
+                                sRect.offsetMin = new Vector2(18f, 0f);
+                                sRect.offsetMax = new Vector2(-18f, 0f);
                             }
+                        }
+                        if (nextButtonRoot != null)
+                        {
+                            var buttonRect = nextButtonRoot.GetComponent<RectTransform>();
+                            if (buttonRect != null)
+                            {
+                                buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(0.5f, 1f);
+                                buttonRect.pivot = new Vector2(0.5f, 0f);
+                                buttonRect.sizeDelta = new Vector2(250f, 40f);
+                                buttonRect.anchoredPosition = new Vector2(0f, 12f);
+                            }
+                            if (nextButtonText != null) nextButtonText.fontSize = 13f;
                         }
                     }
                     else
                     {
+                        rect.localScale = hasCapturedHudScale ? defaultHudScale : Vector3.one * 0.0016f;
                         rect.sizeDelta = new Vector2(650, 150);
                         if (backgroundImage != null) backgroundImage.color = new Color(0.04f, 0.06f, 0.10f, 0.92f);
+                        if (nextButtonRoot != null)
+                        {
+                            var buttonRect = nextButtonRoot.GetComponent<RectTransform>();
+                            if (buttonRect != null)
+                            {
+                                buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(0.5f, 1f);
+                                buttonRect.pivot = new Vector2(0.5f, 0f);
+                                buttonRect.sizeDelta = new Vector2(320f, 46f);
+                                buttonRect.anchoredPosition = new Vector2(0f, 16f);
+                            }
+                            if (nextButtonText != null) nextButtonText.fontSize = 15f;
+                        }
                         if (subtitleText != null)
                         {
                             subtitleText.fontSize = 14;
@@ -253,24 +321,61 @@ namespace FiveGLab.VoiceAgent
 
                 // Ensure readable on-screen time for each line
                 displayTime = Mathf.Max(1.4f, displayTime);
-
-                if (isCinemaSubtitleMode)
-                {
-                    subtitleText.text = $"<size=68%><color=#00E5FF><b>ARIA</b></color></size>\n<color=#FFFFFF><b>{chunk}</b></color>";
-                }
-                else
-                {
-                    subtitleText.text = $"<color=#00E5FF><b>ARIA:</b></color> <color=#FFFFFF><b>{chunk}</b></color>";
-                }
-
-                yield return new WaitForSeconds(displayTime);
+                string styledChunk = isCinemaSubtitleMode
+                    ? $"<color=#4AD5E6><b>ARIA</b></color>  <color=#F3F7FA>{chunk}</color>"
+                    : $"<color=#4AD5E6><b>ARIA:</b></color> <color=#F3F7FA>{chunk}</color>";
+                yield return AnimateSubtitleChunk(styledChunk, displayTime);
             }
 
             // Natural pause at end of dialogue before clearing
-            yield return new WaitForSeconds(2.0f);
+            yield return new WaitForSecondsRealtime(1.2f);
 
-            if (subtitleText != null) subtitleText.text = "";
+            if (subtitleText != null)
+            {
+                subtitleText.text = "";
+                if (subtitleCanvasGroup != null) subtitleCanvasGroup.alpha = 0f;
+            }
             timedSubtitleRoutine = null;
+        }
+
+        private IEnumerator AnimateSubtitleChunk(string value, float displayTime)
+        {
+            if (subtitleText == null) yield break;
+            if (subtitleCanvasGroup == null) subtitleCanvasGroup = subtitleText.GetComponent<CanvasGroup>();
+            if (subtitleCanvasGroup == null) subtitleCanvasGroup = subtitleText.gameObject.AddComponent<CanvasGroup>();
+            if (subtitleRect == null) subtitleRect = subtitleText.rectTransform;
+
+            subtitleText.text = value;
+            subtitleText.maxVisibleCharacters = 0;
+            subtitleText.ForceMeshUpdate();
+            int characterCount = subtitleText.textInfo.characterCount;
+            Vector2 finalPosition = subtitleRect.anchoredPosition;
+            subtitleRect.anchoredPosition = finalPosition + new Vector2(0f, -8f);
+            subtitleCanvasGroup.alpha = 0f;
+
+            float revealDuration = Mathf.Clamp(characterCount / 90f, 0.16f, 0.48f);
+            float elapsed = 0f;
+            while (elapsed < displayTime)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float entrance = Mathf.Clamp01(elapsed / 0.20f);
+                float reveal = Mathf.Clamp01(elapsed / revealDuration);
+                subtitleCanvasGroup.alpha = Mathf.SmoothStep(0f, 1f, entrance);
+                subtitleRect.anchoredPosition = Vector2.Lerp(finalPosition + new Vector2(0f, -8f), finalPosition, Mathf.SmoothStep(0f, 1f, entrance));
+                subtitleText.maxVisibleCharacters = Mathf.CeilToInt(characterCount * reveal);
+                yield return null;
+            }
+
+            subtitleText.maxVisibleCharacters = int.MaxValue;
+            float fadeElapsed = 0f;
+            while (fadeElapsed < 0.14f)
+            {
+                fadeElapsed += Time.unscaledDeltaTime;
+                subtitleCanvasGroup.alpha = 1f - Mathf.Clamp01(fadeElapsed / 0.14f);
+                yield return null;
+            }
+            subtitleCanvasGroup.alpha = 0f;
+            subtitleRect.anchoredPosition = finalPosition;
         }
 
         public void ShowSubtitle(string text)
@@ -284,6 +389,7 @@ namespace FiveGLab.VoiceAgent
             if (subtitleFadeRoutine != null) { StopCoroutine(subtitleFadeRoutine); subtitleFadeRoutine = null; }
             if (timedSubtitleRoutine != null) { StopCoroutine(timedSubtitleRoutine); timedSubtitleRoutine = null; }
             if (subtitleText != null) subtitleText.text = "";
+            if (subtitleCanvasGroup != null) subtitleCanvasGroup.alpha = 0f;
         }
 
         private IEnumerator ClearSubtitleAfterDelay(float delay)
@@ -358,12 +464,32 @@ namespace FiveGLab.VoiceAgent
             {
                 Transform cam = Camera.main.transform;
                 float currentVOffset = isCinemaSubtitleMode ? -0.48f : verticalOffset;
-                float currentFDistance = isCinemaSubtitleMode ? 1.35f : forwardDistance;
+                float currentFDistance = isCinemaSubtitleMode ? 0.84f : forwardDistance;
+#if UNITY_ANDROID && !UNITY_EDITOR
+                  // Keep subtitles at a comfortable headset focus distance and below the sight line.
+                  currentVOffset = isCinemaSubtitleMode ? -0.43f : -0.36f;
+                  currentFDistance = 1.35f;
+#endif
                 Vector3 targetPos = cam.position + cam.forward * currentFDistance + cam.up * currentVOffset;
                 Quaternion targetRot = Quaternion.LookRotation(targetPos - cam.position);
 
                 hudRoot.transform.position = Vector3.SmoothDamp(hudRoot.transform.position, targetPos, ref followVelocity, 0.10f);
                 hudRoot.transform.rotation = Quaternion.Slerp(hudRoot.transform.rotation, targetRot, Time.deltaTime * smoothFollowSpeed);
+
+                if (isCinemaSubtitleMode && conceptCardRoot != null && conceptCardRoot.activeSelf)
+                {
+                    Vector3 cardPosition = cam.position + cam.forward * 1.12f + cam.up * 0.39f;
+                    conceptCardRoot.transform.position = Vector3.Lerp(conceptCardRoot.transform.position, cardPosition, Time.deltaTime * 8f);
+                    conceptCardRoot.transform.rotation = Quaternion.Slerp(conceptCardRoot.transform.rotation, targetRot, Time.deltaTime * 8f);
+                    AnimateConceptNodes();
+                }
+
+                if (isCinemaSubtitleMode && isNextButtonActive && nextButtonRoot != null && nextButtonRoot.activeSelf)
+                {
+                    Vector3 buttonPosition = cam.position + cam.forward * 0.96f + cam.right * 0.42f + cam.up * -0.42f;
+                    nextButtonRoot.transform.position = Vector3.Lerp(nextButtonRoot.transform.position, buttonPosition, Time.deltaTime * 10f);
+                    nextButtonRoot.transform.rotation = Quaternion.Slerp(nextButtonRoot.transform.rotation, targetRot, Time.deltaTime * 10f);
+                }
             }
 
             if (canvas != null && canvas.worldCamera == null && Camera.main != null)
@@ -676,6 +802,215 @@ namespace FiveGLab.VoiceAgent
                     nextButtonRoot.SetActive(false);
                 }
             }
+
+            if (subtitleText != null)
+            {
+                subtitleRect = subtitleText.rectTransform;
+                if (subtitleCanvasGroup == null)
+                {
+                    subtitleCanvasGroup = subtitleText.GetComponent<CanvasGroup>();
+                    if (subtitleCanvasGroup == null) subtitleCanvasGroup = subtitleText.gameObject.AddComponent<CanvasGroup>();
+                }
+            }
+
+            if (hudRoot != null && !hasCapturedHudScale)
+            {
+                defaultHudScale = hudRoot.transform.localScale;
+                hasCapturedHudScale = true;
+            }
+
+            EnsureConceptVisuals();
+        }
+
+        private void EnsureConceptVisuals()
+        {
+            if (canvas == null || conceptCardRoot != null) return;
+
+            conceptCardRoot = new GameObject("Tour_ConceptCard", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
+            conceptCardRoot.transform.SetParent(canvas.transform, false);
+            var cardRect = conceptCardRoot.GetComponent<RectTransform>();
+            cardRect.sizeDelta = new Vector2(700f, 150f);
+            cardRect.localScale = Vector3.one * 0.00080f;
+
+            var cardImage = conceptCardRoot.GetComponent<Image>();
+            cardImage.color = new Color(0.018f, 0.035f, 0.060f, 0.96f);
+            conceptCanvasGroup = conceptCardRoot.GetComponent<CanvasGroup>();
+            conceptCanvasGroup.alpha = 0f;
+            conceptCardRoot.SetActive(false);
+
+            var accent = new GameObject("Accent", typeof(RectTransform), typeof(Image));
+            accent.transform.SetParent(conceptCardRoot.transform, false);
+            var accentRect = accent.GetComponent<RectTransform>();
+            accentRect.anchorMin = new Vector2(0f, 1f);
+            accentRect.anchorMax = new Vector2(1f, 1f);
+            accentRect.pivot = new Vector2(0.5f, 1f);
+            accentRect.sizeDelta = new Vector2(0f, 3f);
+            accentRect.anchoredPosition = Vector2.zero;
+            accent.GetComponent<Image>().color = new Color(0.12f, 0.72f, 0.86f, 1f);
+
+            conceptTitleText = CreateConceptText("ModuleTitle", 18f, FontStyles.Bold,
+                TextAlignmentOptions.MidlineLeft, new Color(0.45f, 0.90f, 0.96f, 1f),
+                new Vector2(0f, 0.70f), new Vector2(1f, 1f), new Vector2(22f, 0f), new Vector2(-18f, -12f));
+            conceptTitleText.transform.SetParent(conceptCardRoot.transform, false);
+
+            conceptCaptionText = CreateConceptText("ModuleCaption", 13f, FontStyles.Normal,
+                TextAlignmentOptions.MidlineLeft, new Color(0.74f, 0.82f, 0.88f, 1f),
+                new Vector2(0f, 0.48f), new Vector2(1f, 0.73f), new Vector2(22f, 0f), new Vector2(-18f, 0f));
+            conceptCaptionText.transform.SetParent(conceptCardRoot.transform, false);
+
+            conceptNodeImages = new Image[4];
+            conceptNodeTexts = new TextMeshProUGUI[4];
+            conceptNodeRects = new RectTransform[4];
+            conceptArrows = new TextMeshProUGUI[3];
+            for (int i = 0; i < 4; i++)
+            {
+                var node = new GameObject($"ConceptNode_{i + 1}", typeof(RectTransform), typeof(Image), typeof(Outline));
+                node.transform.SetParent(conceptCardRoot.transform, false);
+                var nodeRect = node.GetComponent<RectTransform>();
+                nodeRect.sizeDelta = new Vector2(126f, 36f);
+                nodeRect.anchoredPosition = new Vector2(-228f + i * 152f, -43f);
+                node.GetComponent<Image>().color = new Color(0.035f, 0.090f, 0.13f, 0.96f);
+                var outline = node.GetComponent<Outline>();
+                outline.effectColor = new Color(0.11f, 0.42f, 0.54f, 0.65f);
+                outline.effectDistance = new Vector2(1f, 1f);
+
+                var labelObject = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+                labelObject.transform.SetParent(node.transform, false);
+                var labelRect = labelObject.GetComponent<RectTransform>();
+                labelRect.anchorMin = Vector2.zero;
+                labelRect.anchorMax = Vector2.one;
+                labelRect.offsetMin = new Vector2(5f, 2f);
+                labelRect.offsetMax = new Vector2(-5f, -2f);
+                conceptNodeTexts[i] = labelObject.GetComponent<TextMeshProUGUI>();
+                conceptNodeTexts[i].fontSize = 12f;
+                conceptNodeTexts[i].fontStyle = FontStyles.Bold;
+                conceptNodeTexts[i].alignment = TextAlignmentOptions.Center;
+                conceptNodeTexts[i].color = new Color(0.90f, 0.95f, 0.98f, 1f);
+                conceptNodeImages[i] = node.GetComponent<Image>();
+                conceptNodeRects[i] = nodeRect;
+                node.SetActive(false);
+
+                if (i < 3)
+                {
+                    var arrow = CreateConceptText($"Arrow_{i + 1}", 16f, FontStyles.Bold,
+                        TextAlignmentOptions.Center, new Color(0.28f, 0.65f, 0.74f, 0.9f),
+                        Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+                    arrow.transform.SetParent(conceptCardRoot.transform, false);
+                    var arrowRect = arrow.rectTransform;
+                    arrowRect.sizeDelta = new Vector2(24f, 30f);
+                    arrowRect.anchoredPosition = new Vector2(-152f + i * 152f, -43f);
+                    arrow.text = "›";
+                    conceptArrows[i] = arrow;
+                }
+            }
+        }
+
+        private TextMeshProUGUI CreateConceptText(string name, float size, FontStyles style,
+            TextAlignmentOptions alignment, Color color, Vector2 anchorMin, Vector2 anchorMax,
+            Vector2 offsetMin, Vector2 offsetMax)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+            var text = go.GetComponent<TextMeshProUGUI>();
+            text.fontSize = size;
+            text.fontStyle = style;
+            text.alignment = alignment;
+            text.color = color;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            var rect = text.rectTransform;
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = offsetMin;
+            rect.offsetMax = offsetMax;
+            return text;
+        }
+
+        public void ShowModuleConcept(int moduleNumber, string title, string caption, params string[] nodes)
+        {
+            EnsureUIStructure();
+            if (conceptCardRoot == null || conceptTitleText == null || conceptNodeImages == null) return;
+
+            conceptTitleText.text = $"MODULE {moduleNumber:00}   /   {title.ToUpperInvariant()}";
+            conceptCaptionText.text = caption;
+            conceptNodeCount = Mathf.Clamp(nodes != null ? nodes.Length : 0, 0, conceptNodeImages.Length);
+
+            float gap = conceptNodeCount > 1 ? 460f / (conceptNodeCount - 1) : 0f;
+            float width = conceptNodeCount >= 4 ? 126f : conceptNodeCount == 3 ? 148f : 180f;
+            for (int i = 0; i < conceptNodeImages.Length; i++)
+            {
+                bool visible = i < conceptNodeCount;
+                conceptNodeImages[i].gameObject.SetActive(visible);
+                if (visible)
+                {
+                    conceptNodeRects[i].sizeDelta = new Vector2(width, 36f);
+                    conceptNodeRects[i].anchoredPosition = new Vector2(-230f + i * gap, -43f);
+                    conceptNodeTexts[i].text = nodes[i].ToUpperInvariant();
+                }
+            }
+
+            for (int i = 0; i < conceptArrows.Length; i++)
+            {
+                bool visible = i < conceptNodeCount - 1;
+                conceptArrows[i].gameObject.SetActive(visible);
+                if (visible)
+                {
+                    conceptArrows[i].rectTransform.anchoredPosition = new Vector2(-230f + (i + 0.5f) * gap, -43f);
+                }
+            }
+
+            conceptCardRoot.SetActive(true);
+            if (conceptIntroRoutine != null) StopCoroutine(conceptIntroRoutine);
+            conceptIntroRoutine = StartCoroutine(AnimateConceptCardIn());
+        }
+
+        public void HideModuleConcept()
+        {
+            if (conceptIntroRoutine != null)
+            {
+                StopCoroutine(conceptIntroRoutine);
+                conceptIntroRoutine = null;
+            }
+            if (conceptCanvasGroup != null) conceptCanvasGroup.alpha = 0f;
+            if (conceptCardRoot != null) conceptCardRoot.SetActive(false);
+        }
+
+        private IEnumerator AnimateConceptCardIn()
+        {
+            if (conceptCanvasGroup == null || conceptCardRoot == null) yield break;
+            var rect = conceptCardRoot.GetComponent<RectTransform>();
+            Vector3 targetScale = Vector3.one * 0.00080f;
+            conceptCanvasGroup.alpha = 0f;
+            rect.localScale = targetScale * 0.94f;
+
+            float elapsed = 0f;
+            while (elapsed < 0.28f)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / 0.28f));
+                conceptCanvasGroup.alpha = t;
+                rect.localScale = Vector3.Lerp(targetScale * 0.94f, targetScale, t);
+                yield return null;
+            }
+            conceptCanvasGroup.alpha = 1f;
+            rect.localScale = targetScale;
+            conceptIntroRoutine = null;
+        }
+
+        private void AnimateConceptNodes()
+        {
+            if (conceptNodeCount <= 0) return;
+            int activeNode = Mathf.FloorToInt(Time.unscaledTime * 0.8f) % conceptNodeCount;
+            for (int i = 0; i < conceptNodeCount; i++)
+            {
+                bool active = i == activeNode;
+                conceptNodeImages[i].color = active
+                    ? new Color(0.035f, 0.21f, 0.28f, 0.98f)
+                    : new Color(0.035f, 0.075f, 0.10f, 0.92f);
+                var outline = conceptNodeImages[i].GetComponent<Outline>();
+                if (outline != null)
+                    outline.effectColor = active
+                        ? new Color(0.22f, 0.85f, 0.92f, 0.95f)
+                        : new Color(0.11f, 0.35f, 0.42f, 0.55f);
+            }
         }
 
         public void ShowNextButton(string label, System.Action onClick)
@@ -708,14 +1043,7 @@ namespace FiveGLab.VoiceAgent
 
         private void OnNextButtonClicked()
         {
-            if (GuidedTourController.Instance != null && GuidedTourController.Instance.IsTourActive)
-            {
-                GuidedTourController.Instance.AdvanceToNextModule();
-            }
-            else
-            {
-                TriggerNext();
-            }
+            TriggerNext();
         }
 
         private float lastNextTriggerTime = 0f;

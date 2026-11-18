@@ -78,4 +78,9 @@ Assets/Screenshots.meta
 Assets/equipments/1_cups_banner_clean.png*
 __pycache__/
 compile_check.log
+.env
+backend/.env
+tmp/
+Builds/
+
 

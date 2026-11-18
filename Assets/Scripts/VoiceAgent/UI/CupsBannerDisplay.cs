@@ -32,7 +32,7 @@ namespace FiveGLab.VoiceAgent
         private Vector3 poppedPosition;
         private Quaternion poppedRotation;
 
-        [SerializeField] private Vector3 bannerScale = new Vector3(3.30f, 2.20f, 1.0f);
+        [SerializeField] private Vector3 bannerScale = new Vector3(2.70f, 1.80f, 1.0f);
         [SerializeField] private float popDuration = 0.85f;
 
         [Header("Cybernetic Color Palette")]
@@ -107,7 +107,7 @@ namespace FiveGLab.VoiceAgent
             }
 
             // Popped presentation transform: open aisle, eye-level, zero tilt
-            poppedPosition = new Vector3(4.80f, 1.95f, -1.80f);
+            poppedPosition = new Vector3(5.35f, 1.95f, -1.80f);
             poppedRotation = Quaternion.Euler(0f, 90f, 0f);
 
             transform.localScale = bannerScale;

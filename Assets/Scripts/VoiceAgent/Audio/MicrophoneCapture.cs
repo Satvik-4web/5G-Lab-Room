@@ -31,17 +31,29 @@ namespace FiveGLab.VoiceAgent
         private void Awake()
         {
             RequestMicrophonePermission();
+#if !UNITY_ANDROID || UNITY_EDITOR
             InitializeDefaultDevice();
+#endif
         }
 
         public void RequestMicrophonePermission()
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
-            if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+            if (Permission.HasUserAuthorizedPermission(Permission.Microphone))
             {
-                Permission.RequestUserPermission(Permission.Microphone);
+                InitializeDefaultDevice();
+                OnPermissionResult?.Invoke(true);
+                return;
             }
-            OnPermissionResult?.Invoke(Permission.HasUserAuthorizedPermission(Permission.Microphone));
+            var callbacks = new PermissionCallbacks();
+            callbacks.PermissionGranted += _ =>
+            {
+                InitializeDefaultDevice();
+                OnPermissionResult?.Invoke(true);
+            };
+            callbacks.PermissionDenied += _ => OnPermissionResult?.Invoke(false);
+            callbacks.PermissionDeniedAndDontAskAgain += _ => OnPermissionResult?.Invoke(false);
+            Permission.RequestUserPermission(Permission.Microphone, callbacks);
 #else
             bool hasMic = Microphone.devices != null && Microphone.devices.Length > 0;
             OnPermissionResult?.Invoke(hasMic);
@@ -129,6 +141,13 @@ namespace FiveGLab.VoiceAgent
         public bool StartRecording()
         {
             if (isRecording) return true;
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+            {
+                RequestMicrophonePermission();
+                return false;
+            }
+#endif
 
             if (!HasMicrophoneDevice())
             {

@@ -42,11 +42,13 @@ namespace FiveGLab.VoiceAgent
         [Header("Banner Presentation Transform")]
         private Vector3 wallRestPosition = new Vector3(7.44f, 2.29f, 3.10f);
         private Quaternion wallRestRotation = Quaternion.Euler(0f, 90f, 0f);
-        private Vector3 poppedPosition = new Vector3(4.80f, 2.15f, 3.10f); // Popped 2.64m forward into open aisle
+        private Vector3 poppedPosition = new Vector3(5.35f, 2.05f, 3.10f);
         private Quaternion poppedRotation = Quaternion.Euler(0f, 90f, 0f);
 
-        [SerializeField] private Vector3 bannerScale = new Vector3(8.0f, 5.0f, 1.0f); // Authentic wall scale
+        [SerializeField] private Vector3 bannerScale = new Vector3(2.7f, 1.8f, 1.0f);
+        private Vector3 poppedScale;
         [SerializeField] private float popDuration = 0.85f;
+        private Material bannerMaterialInstance;
 
         [Header("Cybernetic Color Palette")]
         private readonly Color colEMBB = new Color(0.0f, 0.90f, 1.0f, 1.0f);     // Electric Cyan (High Speed / Bandwidth)
@@ -109,14 +111,14 @@ namespace FiveGLab.VoiceAgent
                 wallRestRotation = Quaternion.Euler(0f, 90f, 0f);
             }
 
-            if (transform.localScale != Vector3.zero)
-            {
-                bannerScale = transform.localScale;
-            }
-
-            // Popped presentation transform: open aisle, eye-level (X=4.80m, matching Poster1 pop distance)
-            poppedPosition = new Vector3(4.80f, 2.15f, wallRestPosition.z);
+            // Poster2's source texture has large white margins around the printed banner.
+            // Crop to the printed area and keep the large source quad at banner dimensions,
+            // so the wall never moves with the pop animation.
+            bannerScale = new Vector3(2.7f, 1.8f, 1.0f);
+            CropTextureToPrintedBanner();
+            poppedPosition = new Vector3(5.35f, 2.05f, wallRestPosition.z);
             poppedRotation = Quaternion.Euler(0f, 90f, 0f);
+            poppedScale = bannerScale * 1.04f;
 
             transform.localScale = bannerScale;
             transform.position = wallRestPosition;
@@ -125,6 +127,27 @@ namespace FiveGLab.VoiceAgent
             EnsureInteractionComponents();
             BuildHighlightOutlines();
             BuildTargetReticle();
+        }
+
+        private void CropTextureToPrintedBanner()
+        {
+            var renderer = GetComponent<Renderer>();
+            if (renderer == null) return;
+
+            bannerMaterialInstance = renderer.material;
+            Vector2 cropScale = new Vector2(0.25f, 0.301f);
+            Vector2 cropOffset = new Vector2(0.378f, 0.35f);
+
+            if (bannerMaterialInstance.HasProperty("_BaseMap"))
+            {
+                bannerMaterialInstance.SetTextureScale("_BaseMap", cropScale);
+                bannerMaterialInstance.SetTextureOffset("_BaseMap", cropOffset);
+            }
+            if (bannerMaterialInstance.HasProperty("_MainTex"))
+            {
+                bannerMaterialInstance.SetTextureScale("_MainTex", cropScale);
+                bannerMaterialInstance.SetTextureOffset("_MainTex", cropOffset);
+            }
         }
 
         private void Start()
@@ -226,6 +249,13 @@ namespace FiveGLab.VoiceAgent
         private void UpdateRectLine(LineRenderer lr, float xMin, float xMax, float yMin, float yMax, float zOffset)
         {
             if (lr == null) return;
+
+            // The original highlight coordinates were measured on the full source image.
+            // Remap them onto the cropped printed-banner area.
+            xMin = (xMin - 0.003f) / 0.25f;
+            xMax = (xMax - 0.003f) / 0.25f;
+            yMin = (yMin - 0.002f) / 0.301f;
+            yMax = (yMax - 0.002f) / 0.301f;
             float z = -Mathf.Abs(zOffset);
             lr.SetPosition(0, new Vector3(xMin, yMin, z));
             lr.SetPosition(1, new Vector3(xMin, yMax, z));
@@ -311,7 +341,7 @@ namespace FiveGLab.VoiceAgent
             {
                 transform.position = pop ? poppedPosition : wallRestPosition;
                 transform.rotation = pop ? poppedRotation : wallRestRotation;
-                transform.localScale = bannerScale;
+                transform.localScale = pop ? poppedScale : bannerScale;
             }
             else
             {
@@ -323,8 +353,10 @@ namespace FiveGLab.VoiceAgent
         {
             Vector3 startPos = transform.position;
             Quaternion startRot = transform.rotation;
+            Vector3 startScale = transform.localScale;
             Vector3 targetPos = pop ? poppedPosition : wallRestPosition;
             Quaternion targetRot = pop ? poppedRotation : wallRestRotation;
+            Vector3 targetScale = pop ? poppedScale : bannerScale;
 
             float elapsed = 0f;
             while (elapsed < popDuration)
@@ -335,13 +367,13 @@ namespace FiveGLab.VoiceAgent
 
                 transform.position = Vector3.Lerp(startPos, targetPos, smoothT);
                 transform.rotation = Quaternion.Slerp(startRot, targetRot, smoothT);
-                transform.localScale = bannerScale;
+                transform.localScale = Vector3.Lerp(startScale, targetScale, smoothT);
                 yield return null;
             }
 
             transform.position = targetPos;
             transform.rotation = targetRot;
-            transform.localScale = bannerScale;
+            transform.localScale = targetScale;
             popRoutine = null;
         }
 
@@ -349,6 +381,7 @@ namespace FiveGLab.VoiceAgent
         {
             if (popRoutine != null) StopCoroutine(popRoutine);
             if (pulseRoutine != null) StopCoroutine(pulseRoutine);
+            if (bannerMaterialInstance != null) Destroy(bannerMaterialInstance);
             if (_instance == this) _instance = null;
         }
     }

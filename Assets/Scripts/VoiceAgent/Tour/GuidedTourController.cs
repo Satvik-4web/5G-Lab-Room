@@ -138,6 +138,9 @@ namespace FiveGLab.VoiceAgent
 
         private void Start()
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (GetComponent<QuestLabControls>() == null) gameObject.AddComponent<QuestLabControls>();
+#endif
             UseCasesBannerDisplay.EnsureInstance();
             EnsureAllEquipmentActive();
 
@@ -169,7 +172,14 @@ namespace FiveGLab.VoiceAgent
 
             if (nPressed)
             {
-                AdvanceToNextModule();
+                // Route the keyboard shortcut through the same per-module action as
+                // the on-screen Next button. This keeps N aligned with each label's
+                // intended destination instead of inferring it from a possibly stale index.
+                var hud = VoiceAgentManager.Instance != null ? VoiceAgentManager.Instance.HUD : null;
+                if (hud != null && hud.IsNextButtonActive)
+                    hud.TriggerNext();
+                else
+                    AdvanceToNextModule();
             }
 
             // Direct module jump keys [1] - [5]
@@ -267,6 +277,7 @@ namespace FiveGLab.VoiceAgent
 
         public void JumpToModule(int targetModule)
         {
+            targetModule = Mathf.Clamp(targetModule, 1, 6);
             if (Time.unscaledTime - lastAdvanceTime < 0.35f && targetModule == currentModuleIndex) return;
             lastAdvanceTime = Time.unscaledTime;
 
@@ -337,6 +348,8 @@ namespace FiveGLab.VoiceAgent
             // ==========================================
             currentStep = ModuleStep.Module1_Banner_Overview;
             OnStepChanged?.Invoke(currentStep);
+            VoiceAgentManager.Instance?.HUD?.ShowModuleConcept(1, "5G ARCHITECTURE", "Control traffic and user data follow separate paths.",
+                "DEVICE", "5G RADIO", "AMF / SMF", "UPF / SERVICE");
 
             // Pop Banner 1 forward and glide camera for crystal-clear view
             var cups = CupsBannerDisplay.Instance;
@@ -349,7 +362,7 @@ namespace FiveGLab.VoiceAgent
 
             // Camera: (2.10, 1.95, -1.80) facing +X
             GlideCameraTo(new Vector3(2.10f, 1.95f, -1.80f), Quaternion.Euler(0f, 90f, 0f), 1.2f);
-            ShowNextButton("NEXT: MODULE 2 (USE CASES) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule2());
+            ShowNextButton("NEXT  •  USE CASES  [N]", () => AdvanceToModule2());
 
             yield return new WaitForSeconds(0.6f);
             if (session != tourSessionId) yield break;
@@ -422,7 +435,7 @@ namespace FiveGLab.VoiceAgent
             if (session != tourSessionId) yield break;
 
             CupsBannerDisplay.Instance?.SetPopUpState(false);
-            ShowNextButton("NEXT: MODULE 2 (USE CASES) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule2());
+            ShowNextButton("NEXT  •  USE CASES  [N]", () => AdvanceToModule2());
             yield return SpeakAndWait("Great job on Module 1! Click Next or press N whenever you're ready to head over to Module 2.", "mod1_next_prompt.wav");
             if (session != tourSessionId) yield break;
 
@@ -436,6 +449,8 @@ namespace FiveGLab.VoiceAgent
             // ==========================================
             currentStep = ModuleStep.Module2_UseCases_Overview;
             OnStepChanged?.Invoke(currentStep);
+            VoiceAgentManager.Instance?.HUD?.ShowModuleConcept(2, "5G USE CASES", "Three service goals shape the network.",
+                "eMBB  /  SPEED", "mMTC  /  SCALE", "uRLLC  /  RESPONSE");
 
             // Pop Banner 2 forward and glide camera into front alignment
             var useCases = UseCasesBannerDisplay.EnsureInstance();
@@ -448,7 +463,7 @@ namespace FiveGLab.VoiceAgent
 
             // Camera: (2.10, 1.95, 3.10) facing +X
             GlideCameraTo(new Vector3(2.10f, 1.95f, 3.10f), Quaternion.Euler(0f, 90f, 0f), 1.2f);
-            ShowNextButton("NEXT: MODULE 3 (SPECTROMETER) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule3());
+            ShowNextButton("NEXT  •  SPECTRUM  [N]", () => AdvanceToModule3());
 
             yield return new WaitForSeconds(0.6f);
             if (session != tourSessionId) yield break;
@@ -510,7 +525,7 @@ namespace FiveGLab.VoiceAgent
             if (session != tourSessionId) yield break;
 
             if (useCases != null) useCases.SetPopUpState(false);
-            ShowNextButton("NEXT: MODULE 3 (SPECTROMETER) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule3());
+            ShowNextButton("NEXT  •  SPECTRUM  [N]", () => AdvanceToModule3());
             yield return SpeakAndWait("Outstanding job on Use Cases! Whenever you're ready, click Next or press N to head to Module 3 and check out our lab Spectrometer.");
             if (session != tourSessionId) yield break;
 
@@ -524,6 +539,8 @@ namespace FiveGLab.VoiceAgent
             // ==========================================
             currentStep = ModuleStep.Module3_Spectrum_Intro;
             OnStepChanged?.Invoke(currentStep);
+            VoiceAgentManager.Instance?.HUD?.ShowModuleConcept(3, "RF SPECTRUM", "Read signal strength across frequency to spot interference.",
+                "RF INPUT", "FREQUENCY", "SIGNAL POWER", "DIAGNOSE");
 
             // Banners stay on walls, glide camera directly in front of Spectrum Analyzer workbench
             Vector3 camPos = new Vector3(1.473f, 1.25f, -0.65f);
@@ -531,7 +548,7 @@ namespace FiveGLab.VoiceAgent
 
             GlideCameraTo(camPos, camRot, 1.4f);
             FocusOnEquipment(new Vector3(1.473f, 0.95f, 0.127f), new Vector3(0.55f, 0.40f, 1f), new Color(0f, 0.95f, 1f, 0.90f));
-            ShowNextButton("NEXT: MODULE 4 (ANTENNA) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule4());
+            ShowNextButton("NEXT  •  ANTENNA  [N]", () => AdvanceToModule4());
 
             yield return new WaitForSeconds(0.8f);
             if (session != tourSessionId) yield break;
@@ -562,7 +579,7 @@ namespace FiveGLab.VoiceAgent
             yield return SpeakAndWait("Spot on! The spectrum analyzer plots frequency on the horizontal axis and signal amplitude or power on the vertical axis. Now that we know how to measure RF signals, let's step over to Module 4 to inspect the hardware actually transmitting those waves: our 5G Antenna!", "mod3_spectrum_3.wav");
             if (session != tourSessionId) yield break;
 
-            ShowNextButton("NEXT: MODULE 4 (ANTENNA) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule4());
+            ShowNextButton("NEXT  •  ANTENNA  [N]", () => AdvanceToModule4());
             yield return WaitForNextButton(session);
         }
 
@@ -573,6 +590,8 @@ namespace FiveGLab.VoiceAgent
             // ==========================================
             currentStep = ModuleStep.Module4_Antenna_Intro;
             OnStepChanged?.Invoke(currentStep);
+            VoiceAgentManager.Instance?.HUD?.ShowModuleConcept(4, "MASSIVE MIMO", "Phase control shapes a beam toward the active device.",
+                "ANTENNA ARRAY", "PHASE SHIFT", "DIRECTED BEAM", "USER DEVICE");
 
             // Camera frames the massive MIMO antenna on tripod at eye level
             Vector3 camPos = new Vector3(4.40f, 1.65f, -1.82f);
@@ -580,7 +599,7 @@ namespace FiveGLab.VoiceAgent
 
             GlideCameraTo(camPos, camRot, 1.4f);
             FocusOnEquipment(new Vector3(6.22f, 1.62f, -1.82f), new Vector3(0.70f, 0.70f, 1f), new Color(0f, 0.95f, 1f, 0.90f));
-            ShowNextButton("NEXT: MODULE 5 (GNODEB) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule5());
+            ShowNextButton("NEXT  •  gNodeB + EDGE  [N]", () => AdvanceToModule5());
 
             yield return new WaitForSeconds(0.8f);
             if (session != tourSessionId) yield break;
@@ -611,7 +630,7 @@ namespace FiveGLab.VoiceAgent
             yield return SpeakAndWait("Exactly right! Active beamforming focuses radio energy directly at target devices. Now that we've seen how the antenna transmits over the air, let's head over to Module 5 to inspect the massive computing brain running the whole show: the gNodeB base station!", "mod4_antenna_3.wav");
             if (session != tourSessionId) yield break;
 
-            ShowNextButton("NEXT: MODULE 5 (GNODEB) >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToModule5());
+            ShowNextButton("NEXT  •  gNodeB + EDGE  [N]", () => AdvanceToModule5());
             yield return WaitForNextButton(session);
         }
 
@@ -622,24 +641,27 @@ namespace FiveGLab.VoiceAgent
             // ==========================================
             currentStep = ModuleStep.Module5_gNodeB_Intro;
             OnStepChanged?.Invoke(currentStep);
+            VoiceAgentManager.Instance?.HUD?.ShowModuleConcept(5, "gNodeB + EDGE", "Radio access links the user to nearby compute.",
+                "RADIO UNIT", "gNodeB", "UPF / EDGE", "APPLICATION");
+            GNodeBOpenRackDisplay.EnsureInstance();
 
-            // Camera frames the gNodeB base station & core processing server rack
-            Vector3 camPos = new Vector3(2.81f, 1.55f, -4.60f);
-            Quaternion camRot = Quaternion.Euler(0f, 180f, 0f);
+            // Use a three-quarter angle to show the open radio cabinet and adjacent edge rack together.
+            Vector3 camPos = new Vector3(4.35f, 1.52f, -4.55f);
+            Vector3 moduleFocus = new Vector3(3.55f, 1.05f, -6.55f);
+            Quaternion camRot = Quaternion.LookRotation(moduleFocus - camPos);
 
             GlideCameraTo(camPos, camRot, 1.4f);
-            FocusOnEquipment(new Vector3(2.81f, 1.25f, -6.66f), new Vector3(0.95f, 1.80f, 1f), new Color(0f, 0.95f, 1f, 0.90f));
-            ShowNextButton("FINISH LAB TOUR >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToCompletion());
+            ShowNextButton("FINISH TOUR  [N]", () => AdvanceToCompletion());
 
             yield return new WaitForSeconds(0.8f);
             if (session != tourSessionId) yield break;
 
-            yield return SpeakAndWait("And here we are at Module 5! Take a look at this large illuminated server cabinet. This is the heart of the gNodeB and our 5G processing system. gNodeB stands for next-generation Node B, and it's the official 3GPP standard name for modern 5G base stations. While the antenna handles the wireless radio waves, this rack houses the massive digital processing units that control the entire network.", "mod5_gnodeb_0.wav");
+            yield return SpeakAndWait("Here we are at Module 5. This open cabinet shows the key radio and baseband units inside a 5G gNodeB, with the edge compute rack beside it. The gNodeB, or next-generation Node B, is the 5G base station that connects devices over the air and links them to the core network.", "mod5_gnodeb_0.wav");
             if (session != tourSessionId) yield break;
 
             currentStep = ModuleStep.Module5_gNodeB_ComputeAndEdge;
             OnStepChanged?.Invoke(currentStep);
-            yield return SpeakAndWait("Inside this rack, the gNodeB is split into the Distributed Unit and Centralized Unit. It handles microsecond-level packet scheduling, quality of service, security encryption, and manages seamless handovers between cell towers. Mounted right alongside it is our Mobile Edge Computing server, hosting the UPF so data breaks out locally without long trips to distant clouds. Together, they deliver the ultra-reliable, high-throughput promise of 5G!", "mod5_gnodeb_1.wav");
+            yield return SpeakAndWait("Inside the gNodeB, the radio unit converts digital signals to radio frequency, while the distributed unit handles real-time scheduling and the centralized unit manages higher-level radio control. Fiber carries traffic to the nearby edge rack, where the UPF can route data locally instead of sending every packet to a distant cloud.", "mod5_gnodeb_1.wav");
             if (session != tourSessionId) yield break;
 
             // Module 5 Quiz
@@ -660,7 +682,7 @@ namespace FiveGLab.VoiceAgent
             yield return SpeakAndWait("Bingo! gNodeB, or next-generation Node B, is the true engine of 5G connectivity! Incredible job: you have now successfully completed all five modules in our virtual 5G lab, from the CUPS architecture and Use Cases banners to the Spectrometer, the Massive MIMO Antenna, and the gNodeB base station. Feel free to explore the lab freely, click any piece of equipment, or hold V to ask me anything anytime!", "mod5_gnodeb_3.wav");
             if (session != tourSessionId) yield break;
 
-            ShowNextButton("FINISH LAB TOUR >  <size=75%><color=#80D8FF>[N / Click]</color></size>", () => AdvanceToCompletion());
+            ShowNextButton("FINISH TOUR  [N]", () => AdvanceToCompletion());
             yield return WaitForNextButton(session);
         }
 
@@ -696,7 +718,22 @@ namespace FiveGLab.VoiceAgent
         public void GlideCameraTo(Vector3 desiredCamPos, Quaternion desiredCamRot, float duration = 1.2f)
         {
             if (cameraGlideRoutine != null) StopCoroutine(cameraGlideRoutine);
+#if UNITY_ANDROID && !UNITY_EDITOR
+            // In a headset, continuous camera motion and forced pitch are uncomfortable.
+            // Reposition the rig while preserving the player's physical eye height.
+            if (xrOrigin == null) CacheSceneReferences();
+            var head = Camera.main != null ? Camera.main.transform : null;
+            if (xrOrigin == null || head == null) return;
+            PCInteractionTester.StopAllCameraLerps();
+            float yawDelta = Mathf.DeltaAngle(head.eulerAngles.y, desiredCamRot.eulerAngles.y);
+            xrOrigin.RotateAround(head.position, Vector3.up, yawDelta);
+            Vector3 offset = desiredCamPos - head.position;
+            offset.y = 0f;
+            xrOrigin.position += offset;
+            cameraGlideRoutine = null;
+#else
             cameraGlideRoutine = StartCoroutine(GlideCameraRoutine(desiredCamPos, desiredCamRot, duration));
+#endif
         }
 
         private IEnumerator GlideCameraRoutine(Vector3 desiredCamPos, Quaternion desiredCamRot, float duration)
@@ -791,6 +828,9 @@ namespace FiveGLab.VoiceAgent
         {
             if (VoiceAgentManager.Instance != null && VoiceAgentManager.Instance.HUD != null)
             {
+#if UNITY_ANDROID && !UNITY_EDITOR
+                label = label.Replace("[N]", "[A]");
+#endif
                 VoiceAgentManager.Instance.HUD.ShowNextButton(label, onClick);
             }
         }

@@ -22,13 +22,22 @@ public class PopupUIManager : MonoBehaviour
     private void Awake()
     {
         if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
         
         if (popupPanel != null)
         {
             popupPanel.SetActive(false);
             popupPanel.transform.localScale = Vector3.zero;
         }
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     public void ShowPopup(string objName, string objDescription, Transform targetObj)

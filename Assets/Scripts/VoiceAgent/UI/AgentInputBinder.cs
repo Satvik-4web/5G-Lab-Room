@@ -193,7 +193,11 @@ namespace FiveGLab.VoiceAgent
                 OnPttDown();
                 if (manager.HUD != null)
                 {
+#if UNITY_ANDROID && !UNITY_EDITOR
+                    manager.HUD.ShowSubtitle("<color=#00E676><b>Speak now. Press right grip again to send.</b></color>");
+#else
                     manager.HUD.ShowSubtitle("<color=#00E676><b>[RECORDING] Speak now... (Click Stop or press [V] to send)</b></color>");
+#endif
                 }
             }
             else
@@ -254,6 +258,9 @@ namespace FiveGLab.VoiceAgent
 
         private void OnGUI()
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return; // Legacy screen UI has no stable stereo placement in a headset.
+#endif
             if (manager == null) return;
 
             // When tour is active or inspecting the 5G banner, remove all AI menu overlays for clean cinematic view
